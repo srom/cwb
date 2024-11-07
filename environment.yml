@@ -1,0 +1,13 @@
+name: cwb
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - scikit-learn
+  - pandas
+  - matplotlib
+  - seaborn
+  - pytorch::pytorch
+  - jupyter
+  - biopython
+  - imbalanced-learn

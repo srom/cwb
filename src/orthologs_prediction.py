@@ -1,4 +1,8 @@
 """
+-----------------------------------------
+DEPRECATED - use eggNOG-mapper instead.
+-----------------------------------------
+
 Orthologs finder.
 Depends on the output of `run_mmseqs_rbh.sh`, which computes reciprocal best hits for all genomes. 
 This scripts parses the output of mmseqs RBH to come up with orthologs as follows:

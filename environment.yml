@@ -2,12 +2,16 @@ name: cwb
 channels:
   - conda-forge
 dependencies:
-  - python=3.11
-  - scikit-learn
-  - pandas
   - matplotlib
-  - seaborn
-  - pytorch::pytorch
+  - scikit-learn
   - jupyter
-  - biopython
+  - seaborn
+  - python=3.11
   - imbalanced-learn
+  - biopython
+  - pytorch::pytorch
+  - pandas
+  - conda-forge::rdkit
+  - conda-forge::gemmi
+  - anaconda::networkx
+  - numpy>=1.26.4,<1.27.0

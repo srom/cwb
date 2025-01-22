@@ -1,5 +1,6 @@
 from pathlib import Path
 import random
+import re
 import subprocess
 import tempfile
 
@@ -145,6 +146,46 @@ def run_obabel_gen3d(smiles : str, output_path : Path) -> Chem.Mol:
         check=True
     )
     return Chem.MolFromPDBFile(output_path_str)
+
+
+def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
+    """
+    Sanitizes a string to make it compatible for use as a file name on POSIX, Windows, and Mac systems.
+
+    Args:
+        input_string (str): The input string to sanitize.
+        replacement_char (str): The character to replace invalid characters with (default is '_').
+
+    Returns:
+        str: A sanitized string safe for use as a file name.
+    """
+    # Define the invalid characters for file names on POSIX, Windows, and Mac
+    invalid_chars = r"[\\/:*?\"<>|\0\[\]]"
+
+    # Define reserved names for Windows that cannot be used as file names
+    reserved_names = {
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    }
+
+    # Replace invalid characters with the replacement character
+    sanitized = re.sub(invalid_chars, replacement_char, input_string)
+
+    # Strip leading and trailing whitespace or replacement characters
+    sanitized = sanitized.strip().strip(replacement_char)
+
+    # Ensure the filename is not a reserved name on Windows
+    if sanitized.upper() in reserved_names:
+        sanitized = f"{sanitized}{replacement_char}"
+
+    # Trim trailing replacement characters
+    sanitized = sanitized.rstrip(replacement_char)
+
+    # Raise if empty
+    if not sanitized:
+        raise ValueError('Empty string after sanitization')
+
+    return sanitized.replace('None-', '').strip()
 
 
 def gen_model_seeds(n):

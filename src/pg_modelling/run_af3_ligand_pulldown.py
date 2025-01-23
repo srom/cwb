@@ -100,10 +100,14 @@ def main():
                 ligand_specs.append(ligand_spec)
 
     returncode = 0
-    n_iterations = math.ceil(len(ligand_specs) / batch_size)
+    n = len(ligand_specs)
+    n_iterations = math.ceil(n / batch_size)
     for i in range(n_iterations):
         start = i * batch_size
         end = start + batch_size
+
+        logger.info(f'Batch: {start+1:,} to {end:,} of {n:,}')
+
         tempdir = Path(tempfile.mkdtemp())
         try:
             save_json_specs(protein_spec, ligand_specs[start:end], tempdir, n_models)

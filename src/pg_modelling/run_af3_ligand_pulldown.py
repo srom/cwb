@@ -21,6 +21,7 @@ import argparse
 import copy
 import json
 import logging
+import math
 from pathlib import Path
 import random
 import shutil
@@ -59,7 +60,14 @@ def main():
         type=int,
         required=False,
         default=1,
-        help='Path to output folder where structures will be saved.',
+        help='Generate that many models for each input',
+    )
+    parser.add_argument(
+        '--batch_size', 
+        type=int,
+        required=False,
+        default=10,
+        help='AF3 seem to leak memory / store all inputs in memory; restart every so often.',
     )
     args = parser.parse_args()
 
@@ -67,6 +75,7 @@ def main():
     ligand_specs_dir = args.ligand_specs_dir
     output_folder = args.output_folder
     n_models = args.n_models
+    batch_size = args.batch_size
 
     if not protein_spec_path.is_file():
         logger.error(f'Spec path does not exist: {protein_spec_path}')
@@ -90,12 +99,20 @@ def main():
                 ligand_spec = json.load(f)
                 ligand_specs.append(ligand_spec)
 
-    tempdir = Path(tempfile.mkdtemp())
-    try:
-        save_json_specs(protein_spec, ligand_specs, tempdir, n_models)
-        returncode = run_af3(tempdir, output_folder)
-    finally:
-        shutil.rmtree(tempdir)
+    returncode = 0
+    n_iterations = math.ceil(len(ligand_specs) / batch_size)
+    for i in range(n_iterations):
+        start = i * batch_size
+        end = start + batch_size
+        tempdir = Path(tempfile.mkdtemp())
+        try:
+            save_json_specs(protein_spec, ligand_specs[start:end], tempdir, n_models)
+            returncode = run_af3(tempdir, output_folder)
+
+            if returncode != 0:
+                sys.exit(returncode)
+        finally:
+            shutil.rmtree(tempdir)
 
     if returncode == 0:
         logger.info('DONE')

@@ -104,7 +104,7 @@ def main():
     n_iterations = math.ceil(n / batch_size)
     for i in range(n_iterations):
         start = i * batch_size
-        end = start + batch_size
+        end = min(start + batch_size, n)
 
         logger.info(f'Batch: {start+1:,} to {end:,} of {n:,}')
 

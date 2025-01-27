@@ -160,7 +160,7 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
         str: A sanitized string safe for use as a file name.
     """
     # Define the invalid characters for file names on POSIX, Windows, and Mac
-    invalid_chars = r"[\\/:*?\"<>|\0\[\]]"
+    invalid_chars = r"[\\/:*?\"<>|\0\[\]\(\)]"
 
     # Define reserved names for Windows that cannot be used as file names
     reserved_names = {
@@ -168,8 +168,11 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
         "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
     }
 
+    # Special case for (NAG)(NAM)
+    sanitized = input_string.replace(')(', '-')
+
     # Replace invalid characters with the replacement character
-    sanitized = re.sub(invalid_chars, replacement_char, input_string)
+    sanitized = re.sub(invalid_chars, replacement_char, sanitized)
 
     # Strip leading and trailing whitespace or replacement characters
     sanitized = sanitized.strip().strip(replacement_char)
@@ -177,6 +180,9 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
     # Ensure the filename is not a reserved name on Windows
     if sanitized.upper() in reserved_names:
         sanitized = f"{sanitized}{replacement_char}"
+    
+    # Swap multiple relacement char for a single one
+    sanitized = re.sub(f'[{replacement_char}]+', replacement_char, sanitized)
 
     # Trim trailing replacement characters
     sanitized = sanitized.rstrip(replacement_char)
@@ -185,6 +191,7 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
     if not sanitized:
         raise ValueError('Empty string after sanitization')
 
+    # Remove None- in name when no glycans
     return sanitized.replace('None-', '').strip()
 
 

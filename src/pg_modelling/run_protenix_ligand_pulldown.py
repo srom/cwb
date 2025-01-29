@@ -176,7 +176,7 @@ def gen_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> str:
         )
 
     for _ in range(n_tries):
-        seeds = [int(random.uniform(1, max_seed)) for _ in range(n)]
+        seeds = [str(int(random.uniform(1, max_seed)) for _ in range(n))]
         if len(seeds) == len(set(seeds)):
             break
     

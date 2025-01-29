@@ -100,9 +100,6 @@ def main():
     try:
         json_path = save_json_specs(protein_record, msa_folder, ligand_pdb_dir, tempdir)
         returncode = run_protenix(json_path, output_folder, n_models)
-
-        if returncode != 0:
-            sys.exit(returncode)
     finally:
         shutil.rmtree(tempdir)
 
@@ -174,7 +171,9 @@ def run_protenix(json_path : Path, output_folder : Path, n_models : int) -> int:
 
 def gen_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> str:
     if n >= max_seed:
-        raise ValueError('Increase max seed number')
+        raise ValueError(
+            f'Number of models requested ({n}) is too high for the max seed set ({max_seed})'
+        )
 
     for _ in range(n_tries):
         seeds = [int(random.uniform(1, max_seed)) for _ in range(n)]

@@ -22,28 +22,12 @@ def generate_ccd_from_mol(
     """
     try:
         conformer = mol.GetConformer()
-        generate_conformation = not conformer.Is3D()
+        generate_conformation_bool = not conformer.Is3D()
     except ValueError:
-        generate_conformation = True
+        generate_conformation_bool = True
 
-    if generate_conformation:
-        params = AllChem.ETKDGv3()
-        params.randomSeed = random_seed
-        conformer_id = AllChem.EmbedMolecule(mol, params)
-
-        if conformer_id == -1 and obabel_fallback:
-            print('RDKit ETKDGv3 failed - falling back on obabel')
-            smiles = Chem.MolToSmiles(mol)
-            with tempfile.NamedTemporaryFile(suffix='.pdb') as f:
-                mol = run_obabel_gen3d(smiles, Path(f.name))
-        
-        elif conformer_id == -1:
-            raise ValueError('RDKit ETKDGv3 failed to come up with a conformation')
-
-        conformer = mol.GetConformer()
-        assert conformer.Is3D()
-
-        AllChem.UFFOptimizeMolecule(mol)
+    if generate_conformation_bool:
+        mol = generate_conformation(mol, random_seed, obabel_fallback)
 
     # Extract atom and bond information
     atoms = []
@@ -146,6 +130,28 @@ def run_obabel_gen3d(smiles : str, output_path : Path) -> Chem.Mol:
         check=True
     )
     return Chem.MolFromPDBFile(output_path_str)
+
+
+def generate_conformation(mol : Chem.Mol, random_seed : int = 42, obabel_fallback : bool = False):
+    params = AllChem.ETKDGv3()
+    params.randomSeed = random_seed
+    conformer_id = AllChem.EmbedMolecule(mol, params)
+
+    if conformer_id == -1 and obabel_fallback:
+        print('RDKit ETKDGv3 failed - falling back on obabel')
+        smiles = Chem.MolToSmiles(mol)
+        with tempfile.NamedTemporaryFile(suffix='.pdb') as f:
+            mol = run_obabel_gen3d(smiles, Path(f.name))
+    
+    elif conformer_id == -1:
+        raise ValueError('RDKit ETKDGv3 failed to generate a 3D conformation')
+
+    conformer = mol.GetConformer()
+    assert conformer.Is3D()
+
+    AllChem.UFFOptimizeMolecule(mol)
+
+    return mol
 
 
 def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:

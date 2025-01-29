@@ -87,7 +87,7 @@ def main():
         logger.error(f'Output folder does not exist: {output_folder}')
         sys.exit(1)
 
-    protein_record = list(SeqIO.parse(protein_fasta_path))[0]
+    protein_record = list(SeqIO.parse(protein_fasta_path, 'fasta'))[0]
 
     tempdir = Path(tempfile.mkdtemp())
     try:

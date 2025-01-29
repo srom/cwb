@@ -92,7 +92,7 @@ def main():
         logger.error(f'No sequences in fasta file: {protein_fasta_path}')
         sys.exit(1)
     elif len(protein_records) > 1:
-        logger.warning('More than one sequence in fasta file; only the first one is considered')
+        logger.warning('More than one sequence in the FASTA file; only the first sequence will be considered.')
 
     protein_record = protein_records[0]
 

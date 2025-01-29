@@ -89,7 +89,7 @@ def main():
 
     protein_records = list(SeqIO.parse(protein_fasta_path, 'fasta'))
     if len(protein_records) == 0:
-        logger.error(f'No sequences in fasta file: {protein_fasta_path}')
+        logger.error(f'No sequences found in the FASTA file: {protein_fasta_path}')
         sys.exit(1)
     elif len(protein_records) > 1:
         logger.warning('More than one sequence in the FASTA file; only the first sequence will be considered.')

@@ -68,14 +68,14 @@ def main():
     )
     args = parser.parse_args()
 
-    protein_spec_path = args.protein_spec_path
+    protein_fasta_path = args.protein_fasta_path
     msa_folder = args.msa_folder
     ligand_pdb_dir = args.ligand_pdb_dir
     output_folder = args.output_folder
     n_models = args.n_models
 
-    if not protein_spec_path.is_file():
-        logger.error(f'Spec path does not exist: {protein_spec_path}')
+    if not protein_fasta_path.is_file():
+        logger.error(f'Spec path does not exist: {protein_fasta_path}')
         sys.exit(1)
     elif not msa_folder.is_dir():
         logger.error(f'MSA directory does not exist: {msa_folder}')
@@ -87,7 +87,7 @@ def main():
         logger.error(f'Output folder does not exist: {output_folder}')
         sys.exit(1)
 
-    protein_record = list(SeqIO.parse(protein_spec_path))[0]
+    protein_record = list(SeqIO.parse(protein_fasta_path))[0]
 
     tempdir = Path(tempfile.mkdtemp())
     try:

@@ -172,7 +172,7 @@ def run_protenix(json_path : Path, output_folder : Path, n_models : int) -> int:
     return result.returncode
 
 
-def gen_model_seeds(n : int, max_seed=1000, n_tries : int = 100) -> str:
+def gen_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> str:
     if n >= max_seed:
         raise ValueError('Increase max seed number')
 

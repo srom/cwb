@@ -87,7 +87,14 @@ def main():
         logger.error(f'Output folder does not exist: {output_folder}')
         sys.exit(1)
 
-    protein_record = list(SeqIO.parse(protein_fasta_path, 'fasta'))[0]
+    protein_records = list(SeqIO.parse(protein_fasta_path, 'fasta'))
+    if len(protein_records) == 0:
+        logger.error(f'No sequences in fasta file: {protein_fasta_path}')
+        sys.exit(1)
+    elif len(protein_records) > 1:
+        logger.warning('More than one sequence in fasta file; only the first one is considered')
+
+    protein_record = protein_records[0]
 
     tempdir = Path(tempfile.mkdtemp())
     try:

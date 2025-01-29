@@ -11,7 +11,9 @@ Arguments:
 - Number of models to be predicted.
 - Output folder.
 
-Generate a new JSON spec per ligand and runs Protenix.
+Generates an appropriate JSON spec and runs Protenix.
+
+Limitations: only handles a single protein at the moment; can easily be extended to more complex cases.
 """
 import argparse
 import json

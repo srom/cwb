@@ -175,7 +175,10 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
     }
 
     # Special case for (NAG)(NAM)
-    sanitized = input_string.replace(')(', '-')
+    sanitized = input_string.replace(')(', replacement_char)
+
+    # Remove None when no glycans
+    sanitized = sanitized.replace('None-', '').replace('-None', '').replace('None', '')
 
     # Replace invalid characters with the replacement character
     sanitized = re.sub(invalid_chars, replacement_char, sanitized)
@@ -190,15 +193,14 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
     # Swap multiple relacement char for a single one
     sanitized = re.sub(f'[{replacement_char}]+', replacement_char, sanitized)
 
-    # Trim trailing replacement characters
-    sanitized = sanitized.rstrip(replacement_char)
+    # Trim replacement characters and spaces
+    sanitized = sanitized.strip(replacement_char).strip()
 
     # Raise if empty
     if not sanitized:
         raise ValueError('Empty string after sanitization')
 
-    # Remove None- in name when no glycans
-    return sanitized.replace('None-', '').strip()
+    return sanitized
 
 
 def gen_model_seeds(n):

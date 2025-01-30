@@ -166,7 +166,7 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
         str: A sanitized string safe for use as a file name.
     """
     # Define the invalid characters for file names on POSIX, Windows, and Mac
-    invalid_chars = r"[\\/:*?\"<>|\0\[\]\(\)]"
+    invalid_chars = r"[\\/;:*?\"<>|\0\[\]\(\)]"
 
     # Define reserved names for Windows that cannot be used as file names
     reserved_names = {

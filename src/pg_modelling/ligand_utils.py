@@ -28,6 +28,7 @@ def generate_ccd_from_mol(
 
     if generate_conformation_bool:
         mol = generate_conformation(mol, random_seed, obabel_fallback)
+        conformer = mol.GetConformer()
 
     # Extract atom and bond information
     atoms = []

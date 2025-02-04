@@ -15,7 +15,6 @@ def process_protenix_ligand_pulldown_results(
     data = {
         'protein_name': [],
         'ligand_name': [],
-        'folder': [],
         'structure_file': [],
         'seed': [],
         'ptm': [],
@@ -63,7 +62,6 @@ def process_protenix_ligand_pulldown_results(
 
             data['protein_name'].append(protein_name)
             data['ligand_name'].append(ligand_name)
-            data['folder'].append(ligand_folder_name)
             data['structure_file'].append(structure_file.as_posix())
             data['seed'].append(seed)
             data['ptm'].append(ptm)

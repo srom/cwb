@@ -11,12 +11,12 @@ def process_protenix_ligand_pulldown_results(
     protein_name : str, 
     results_folder : Path,
     run_posebusters : bool = False,
+    score_all_sample : bool = False,
 ):
     data = {
         'protein_name': [],
         'ligand_name': [],
         'structure_file': [],
-        'seed': [],
         'ptm': [],
         'iptm': [],
         'confidence': [],
@@ -36,37 +36,30 @@ def process_protenix_ligand_pulldown_results(
             if not seed_folder.name.startswith('seed_'):
                 continue
 
-            seed = seed_folder.name
-
-            score_file = None
-            for f in (seed_folder / 'predictions').glob('*_sample_0.json'):
-                score_file = f
-                break
-
-            structure_file = None
-            for f in (seed_folder / 'predictions').glob('*_sample_0.cif'):
+            models = []
+            pattern = '*_sample_*.cif' if score_all_sample else '*_sample_0.cif'
+            for f in (seed_folder / 'predictions').glob(pattern):
                 structure_file = f
-                break
+                score_file = (
+                    f.parent / 
+                    f.name.replace('.cif', '.json').replace('_sample_', '_summary_confidence_sample_')
+                )
+                models.append((structure_file, score_file))
 
-            if score_file is None:
-                raise ValueError(f'No score file for ligand {ligand_name} ({seed_folder})')
-            if structure_file is None:
-                raise ValueError(f'No structure file for ligand {ligand_name} ({seed_folder})')
+            for structure_file, score_file in models:
+                with score_file.open() as f:
+                    scores = json.load(f)
+                
+                ptm = scores['ptm']
+                iptm = scores['iptm']
+                confidence = 0.8 * iptm + 0.2 * ptm
 
-            with score_file.open() as f:
-                scores = json.load(f)
-            
-            ptm = scores['ptm']
-            iptm = scores['iptm']
-            confidence = 0.8 * iptm + 0.2 * ptm
-
-            data['protein_name'].append(protein_name)
-            data['ligand_name'].append(ligand_name)
-            data['structure_file'].append(structure_file.as_posix())
-            data['seed'].append(seed)
-            data['ptm'].append(ptm)
-            data['iptm'].append(iptm)
-            data['confidence'].append(confidence)
+                data['protein_name'].append(protein_name)
+                data['ligand_name'].append(ligand_name)
+                data['structure_file'].append(structure_file.as_posix())
+                data['ptm'].append(ptm)
+                data['iptm'].append(iptm)
+                data['confidence'].append(confidence)
 
     protenix_results_df = pd.DataFrame.from_dict(data).sort_values(
         'confidence', 

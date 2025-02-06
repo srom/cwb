@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.pg_modelling.ligand_utils import run_pose_busters
+from src.pg_modelling.ligand_utils import run_pose_busters, POSEBUSTERS_CHECKS
 
 
 def process_protenix_ligand_pulldown_results(
@@ -67,18 +67,20 @@ def process_protenix_ligand_pulldown_results(
     )
 
     if run_posebusters:
-        scores, errors = [], []
+        scores, errors, energy_ratios = [], [], []
         for structure_file_path in protenix_results_df['structure_file'].values:
-            score, errs = run_protenix_posebusters(structure_file_path)
+            score, errs, energy_ratio = run_protenix_posebusters(structure_file_path)
             scores.append(score)
             errors.append(errs)
+            energy_ratios.append(np.round(energy_ratio, 3))
 
         protenix_results_df['posebusters_score'] = scores
         protenix_results_df['posebusters_errors'] = errors
+        protenix_results_df['energy_ratio'] = energy_ratios
 
         protenix_results_df = protenix_results_df.sort_values(
-            ['posebusters_score', 'confidence'], 
-            ascending=False,
+            ['posebusters_score', 'energy_ratio', 'confidence'], 
+            ascending=[False, True, False],
         )
 
     return protenix_results_df.drop_duplicates([
@@ -90,20 +92,23 @@ def process_protenix_ligand_pulldown_results(
     ])
 
 
-def run_protenix_posebusters(structure_path_str : str):
-    pose_busters_res = run_pose_busters(Path(structure_path_str), 'l01').iloc[0]
+def run_protenix_posebusters(structure_path_str : str, ligand_id='l01'):
+    pose_busters_res = run_pose_busters(
+        Path(structure_path_str), 
+        ligand_id=ligand_id,
+        full_report=True,
+    ).iloc[0]
 
     pose_busters_score = pose_busters_res['score']
+    energy_ratio = pose_busters_res['energy_ratio']
 
     error_str = None
     if not pose_busters_res['perfect_score']:
         errs = []
         for col, val in pose_busters_res.items():
-            if col == 'perfect_score':
-                continue
-            if isinstance(val, np.bool_) and not val:
+            if col in POSEBUSTERS_CHECKS and not val:
                 errs.append(col)
         
         error_str = ','.join(errs)
     
-    return pose_busters_score, error_str
+    return pose_busters_score, error_str, energy_ratio

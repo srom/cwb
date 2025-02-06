@@ -4,11 +4,22 @@ import re
 import subprocess
 import tempfile
 
+import numpy as np
 from Bio.PDB import MMCIFParser, PDBIO, Select
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import gemmi
 from posebusters import PoseBusters
+
+
+POSEBUSTERS_CHECKS = [
+    'mol_pred_loaded', 'mol_cond_loaded', 'sanitization', 'inchi_convertible', 'all_atoms_connected',
+    'bond_lengths', 'bond_angles', 'internal_steric_clash', 'aromatic_ring_flatness', 'double_bond_flatness',
+    'internal_energy', 'protein-ligand_maximum_distance', 'minimum_distance_to_protein', 
+    'minimum_distance_to_organic_cofactors', 'minimum_distance_to_inorganic_cofactors',
+    'minimum_distance_to_waters', 'volume_overlap_with_protein', 'volume_overlap_with_organic_cofactors', 
+    'volume_overlap_with_inorganic_cofactors', 'volume_overlap_with_waters',
+]
 
 
 def generate_ccd_from_mol(
@@ -193,7 +204,7 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
     return sanitized
 
 
-def run_pose_busters(input_mmcif : Path, ligand_id : str):
+def run_pose_busters(input_mmcif : Path, ligand_id : str, full_report : bool = False):
     """
     Plausibility checks for generated molecule poses with [PoseBusters](https://github.com/maabuu/posebusters).
     """
@@ -207,9 +218,10 @@ def run_pose_busters(input_mmcif : Path, ligand_id : str):
             mol_pred=ligand_sdf_path, 
             mol_cond=protein_pdb_path,
             mol_true=None,
+            full_report=full_report,
         )
 
-    boolean_columns = res_df.columns.tolist()
+    boolean_columns = POSEBUSTERS_CHECKS
     res_df['ligand_id'] = ligand_id
     res_df = res_df.set_index('ligand_id')
     res_df['score'] = res_df.apply(lambda row: sum([row[c] for c in boolean_columns]), axis=1)

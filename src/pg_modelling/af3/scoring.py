@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import gemmi
 
-from src.pg_modelling.ligand_utils import run_pose_busters
+from src.pg_modelling.ligand_utils import run_pose_busters, POSEBUSTERS_CHECKS
 
 
 def process_af3_ligand_pulldown_results(
@@ -66,17 +66,19 @@ def process_af3_ligand_pulldown_results(
     )
 
     if run_posebusters:
-        scores, errors = [], []
+        scores, errors, energy_ratios = [], [], []
         for ligand_name, structure_file_path in results_df[['ligand_name', 'structure_file']].values:
-            score, errs = run_af3_posebusters(ligand_name, structure_file_path)
+            score, errs, energy_ratio = run_af3_posebusters(ligand_name, structure_file_path)
             scores.append(score)
             errors.append(errs)
+            energy_ratios.append(np.round(energy_ratio, 3))
 
         results_df['posebusters_score'] = scores
         results_df['posebusters_errors'] = errors
+        results_df['energy_ratio'] = energy_ratios
 
         results_df = results_df.sort_values(
-            ['posebusters_score', 'confidence'], 
+            ['posebusters_score', 'energy_ratio', 'confidence'], 
             ascending=False,
         )
     
@@ -90,21 +92,25 @@ def process_af3_ligand_pulldown_results(
 
 
 def run_af3_posebusters(ligand_name : str, structure_path_str : str):
-    p = Path(structure_path_str)
-    pose_busters_res = run_pose_busters(p, ligand_name).iloc[0]
+    pose_busters_res = run_pose_busters(
+        Path(structure_path_str), 
+        ligand_id=ligand_name,
+        full_report=True,
+    ).iloc[0]
+    
     pose_busters_score = pose_busters_res['score']
+    energy_ratio = pose_busters_res['energy_ratio']
+
     error_str = None
     if not pose_busters_res['perfect_score']:
         errs = []
         for col, val in pose_busters_res.items():
-            if col == 'perfect_score':
-                continue
-            if isinstance(val, np.bool_) and not val:
+            if col in POSEBUSTERS_CHECKS and not val:
                 errs.append(col)
         
         error_str = ','.join(errs)
     
-    return pose_busters_score, error_str
+    return pose_busters_score, error_str, energy_ratio
 
 
 def read_ligand_name_from_mmcif(mmcif_file : Path):

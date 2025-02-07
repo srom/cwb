@@ -52,7 +52,7 @@ def process_protenix_ligand_pulldown_results(
                 
                 ptm = scores['ptm']
                 iptm = scores['iptm']
-                confidence = 0.8 * iptm + 0.2 * ptm
+                confidence = np.round(0.8 * iptm + 0.2 * ptm, 3)
 
                 data['protein_name'].append(protein_name)
                 data['ligand_name'].append(ligand_name)
@@ -72,7 +72,7 @@ def process_protenix_ligand_pulldown_results(
             score, errs, energy_ratio = run_protenix_posebusters(structure_file_path)
             scores.append(score)
             errors.append(errs)
-            energy_ratios.append(np.round(energy_ratio, 3))
+            energy_ratios.append(np.round(energy_ratio, 1))
 
         protenix_results_df['posebusters_score'] = scores
         protenix_results_df['posebusters_errors'] = errors

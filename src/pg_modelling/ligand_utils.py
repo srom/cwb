@@ -146,9 +146,15 @@ def run_obabel_gen3d(smiles : str, output_path : Path) -> Chem.Mol:
     return Chem.MolFromPDBFile(output_path_str)
 
 
-def generate_conformation(mol : Chem.Mol, random_seed : int = 42, obabel_fallback : bool = False):
+def generate_conformation(
+        mol : Chem.Mol, 
+        random_seed : int = 42, 
+        obabel_fallback : bool = False,
+        n_cpus : int = 1,
+    ):
     params = AllChem.ETKDGv3()
     params.randomSeed = random_seed
+    params.numThreads = n_cpus
     conformer_id = AllChem.EmbedMolecule(mol, params)
 
     if conformer_id == -1 and obabel_fallback:
@@ -202,6 +208,10 @@ def sanitize_ligand_name(input_string: str, replacement_char: str = '-') -> str:
         raise ValueError('Empty string after sanitization')
 
     return sanitized
+
+
+def sanitize_protein_id(input_string: str, replacement_char: str = '-') -> str:
+    return sanitize_ligand_name(input_string, replacement_char)
 
 
 def run_pose_busters(input_mmcif : Path, ligand_id : str, full_report : bool = False):

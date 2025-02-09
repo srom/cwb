@@ -12,12 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-##
-# Adapted from https://github.com/bytedance/Protenix/blob/v0.4.1/scripts/colabfold_msa.py
-#
-# Only the post-processing part is included.
-##
-
 import argparse
 from pathlib import Path
 from typing import Dict, List, Tuple
@@ -26,7 +20,7 @@ from typing import Dict, List, Tuple
 class A3MProcessor:
     """Processor for A3M file format."""
 
-    def __init__(self, a3m_file: Path, out_dir: str):
+    def __init__(self, a3m_file: Path, out_dir: Path):
         self.out_dir = out_dir
         self.a3m_file = a3m_file
         self.a3m_content = self._read_a3m_file()
@@ -54,12 +48,13 @@ class A3MProcessor:
 
             return chain_names, seq_ranges
         else:
+            filename = self.a3m_file.name.replace('.a3m', '')
             non_pairing = ">query\n" + "\n".join(self.a3m_content.split("\n")[1:])
             query_seq = self.a3m_content.split("\n")[1]
             pairing = f">query\n{query_seq}"
-            msa_path = Path(self.out_dir) / "msa"
+            msa_path = self.out_dir / 'msa'
             msa_path.mkdir(exist_ok=True)
-            msa_path = msa_path / "0"
+            msa_path = msa_path / f'{filename}'
             msa_path.mkdir(exist_ok=True)
             with open(msa_path / "non_pairing.a3m", "w") as f:
                 f.write(non_pairing)
@@ -88,7 +83,11 @@ class A3MProcessor:
 
     def split_sequences(self) -> None:
         """Split A3M file into pairing and non-pairing sequences."""
-        out_dir = Path(self.out_dir) / "msa"
+        filename = self.a3m_file.name.replace('.a3m', '')
+        out_dir = self.out_dir / 'msa'
+        out_dir.mkdir(exist_ok=True)
+        out_dir = out_dir / f'{filename}'
+
         chain_names, seq_ranges = self.chain_info
 
         pairing_a3ms = {name: [] for name in chain_names}
@@ -173,15 +172,20 @@ class A3MProcessor:
                         f.write(f">{seq_name}\n{seq}\n")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='ColabFold Protenix postprocessing tool',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('results_dir', help='Directory for storing results')
+    parser.add_argument('results_dir', type=Path, help='Directory for storing results')
     args = parser.parse_args()
 
-    for a3m_file in Path(args.results_dir).glob('*.a3m'):
-        processor = A3MProcessor(a3m_file, args.results_dir)
+    # Return the first .a3m file found in results directory
+    result_files = list(args.results_dir.glob('*.a3m'))
+    if len(result_files) == 0:
+        raise FileNotFoundError(f'No .a3m files found in {args.results_dir}')
+    
+    for result_file in result_files:
+        processor = A3MProcessor(result_file, args.results_dir)
         if len(processor.chain_info) == 2:
             processor.split_sequences()

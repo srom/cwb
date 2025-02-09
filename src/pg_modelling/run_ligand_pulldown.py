@@ -97,7 +97,6 @@ def main():
         logger.error('Protenix, Bolz and Chai are only supported on PBSPro for now')
         sys.exit(1)
 
-    conda_env_names = {model: getattr(args, f'env_{model}') for model in models}
     time_budget = {
         'msa': args.hours_msa,
         'modelling': args.hours_modelling,
@@ -113,7 +112,6 @@ def main():
         f'\t- Output dir = {output_dir}\n'
         f'\t- Orchestrator = {orchestrator}\n'
         f'\t- Models = {models}\n'
-        f'\t- Conda env names = {conda_env_names}\n'
         f'\t- Time budget (hours) = {time_budget}\n'
         f'\t- Number of CPUs = {n_cpus}\n'
     ))
@@ -163,13 +161,17 @@ def main():
     # Generate inputs
     generate_modelling_inputs(proteins, ligands, models, msa_folder, model_dirs, n_cpus)
 
-    # Generate Modelling scripts
+    # Generate modelling scripts
+    modelling_script_paths = generate_modelling_scripts()
 
-    # Generate Scoring scripts
+    # Generate scoring scripts
+    scoring_script_paths = generate_scoring_scripts()
 
     # Orchestrate 
+    orchestration_script_path = orchestrate_run(msa_script_path, modelling_script_paths, scoring_script_paths)
 
     # Run
+    do_run(orchestration_script_path)
 
     logger.info('Pulldown started')
     sys.exit(0)
@@ -251,7 +253,7 @@ def generate_modelling_inputs(
     msa_folder : Path,
     model_dirs : Dict[str, Path], 
     n_cpus : int,
-):
+) -> None:
     for protein in proteins:
         for ligand_id, ligand_mol in parse_ligands(ligands, n_cpus):
             for model in models:
@@ -267,6 +269,26 @@ def generate_modelling_inputs(
                     generate_chai_input(protein, ligand_id, ligand_mol, model_dir, msa_folder)
                 else:
                     raise ValueError(f'Unknown model: {model}')
+
+
+def generate_modelling_scripts():
+    return []
+
+
+def generate_scoring_scripts():
+    return []
+
+
+def orchestrate_run(
+    msa_script_path : Path, 
+    modelling_script_paths : List[Path], 
+    scoring_script_paths : List[Path],
+) -> Path:
+    return None
+
+
+def do_run(orchestration_script_path : Path) -> None:
+    pass
 
 
 def generate_af3_input(
@@ -368,7 +390,7 @@ def generate_boltz_input(
     model_dir : Path, 
     msa_folder : Path,
 ):
-    pass
+    raise NotImplementedError
 
 
 def generate_chai_input(
@@ -378,7 +400,7 @@ def generate_chai_input(
     model_dir : Path, 
     msa_folder : Path,
 ):
-    pass
+    raise NotImplementedError
 
 
 def parse_ligands(ligands : pd.DataFrame, n_cpus : int) -> Iterator[Tuple[str, Chem.Mol]]:
@@ -449,41 +471,6 @@ def parse_args():
         '--chai', 
         action='store_true',
         help='Run Chai (https://github.com/chaidiscovery/chai-lab)',
-    )
-    parser.add_argument(
-        '--env_af3', 
-        type=str,
-        required=False,
-        default='af3',
-        help='Name of AF3 conda environment',
-    )
-    parser.add_argument(
-        '--env_protenix', 
-        type=str,
-        required=False,
-        default='protenix',
-        help='Name of Protenix conda environment',
-    )
-    parser.add_argument(
-        '--env_boltz', 
-        type=str,
-        required=False,
-        default='boltz',
-        help='Name of Boltz conda environment',
-    )
-    parser.add_argument(
-        '--env_chai', 
-        type=str,
-        required=False,
-        default='chai',
-        help='Name of Chai conda environment',
-    )
-    parser.add_argument(
-        '--env_scoring', 
-        type=str,
-        required=False,
-        default='cwb',
-        help='Name of post-processing (scoring) conda environment',
     )
     parser.add_argument(
         '--hours_msa', 

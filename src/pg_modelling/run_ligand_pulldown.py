@@ -157,9 +157,10 @@ def main():
         result_dir.mkdir()
         model_dirs[model] = result_dir
 
-    # Generate MSA script
     msa_script_path = None
     if not skip_msa:
+        # Generate MSA script
+        logger.info('Generating MSA script')
         msa_script_path = generate_msa_script(
             fasta_path, 
             models, 
@@ -175,6 +176,7 @@ def main():
         generate_modelling_inputs(proteins, ligands, models, n_predictions, msa_folder, model_dirs, n_cpus)
 
         # Generate modelling scripts
+        logger.info('Generating modelling scripts')
         modelling_script_paths = generate_modelling_scripts(
             models, 
             model_dirs,
@@ -186,9 +188,11 @@ def main():
     scoring_script_paths = []
     if not skip_scoring:
         # Generate scoring scripts
+        logger.info('Generating scoring scripts')
         scoring_script_paths = generate_scoring_scripts()
 
-    # Orchestrate 
+    # Orchestrate
+    logger.info('Generating orchestration script')
     orchestration_script_path = orchestrate_run(
         orchestrator, 
         output_dir,
@@ -198,7 +202,12 @@ def main():
     )
 
     # Run
+    logger.info('Running orchestration script')
     returncode = do_run(orchestration_script_path)
+
+    if returncode == 0:
+        logger.info('DONE')
+
     sys.exit(returncode)
 
 
@@ -358,7 +367,7 @@ def generate_af3_modelling_script(model_dir : Path, logs_foder : Path, max_runti
 
 def generate_protenix_modelling_script(model_dir : Path, n_predictions : int, logs_foder : Path, max_runtime_in_hours : int):
     current_path = Path(os.path.abspath(__file__)).parent
-    raw_script_path = current_path / 'af3' / 'run_protenix.sh'
+    raw_script_path = current_path / 'protenix' / 'run_protenix.sh'
 
     with raw_script_path.open('r') as f:
         protenix_script_raw = f.read()
@@ -594,7 +603,7 @@ def parse_ligands(ligands : pd.DataFrame, n_cpus : int) -> Iterator[Tuple[str, C
 
 
 def encode_pbspro_time_budget(max_runtime_in_hours : int) -> str:
-    return f'{str(max_runtime_in_hours).zfill(2)}:00:00',
+    return f'{str(max_runtime_in_hours).zfill(2)}:00:00'
 
 
 def encode_slurm_time_budget(max_runtime_in_hours : int) -> str:

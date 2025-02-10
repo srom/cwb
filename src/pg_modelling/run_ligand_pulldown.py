@@ -191,10 +191,8 @@ def main():
     orchestration_script_path = orchestrate_run(msa_script_path, modelling_script_paths, scoring_script_paths)
 
     # Run
-    do_run(orchestration_script_path)
-
-    logger.info('DONE')
-    sys.exit(0)
+    returncode = do_run(orchestration_script_path)
+    sys.exit(returncode)
 
 
 def generate_msa_script(
@@ -230,26 +228,7 @@ def generate_msa_script(
         with msa_script_path.open('r') as f:
             msa_script_raw = f.read()
 
-        for protein_record in SeqIO.parse(fasta_path, 'fasta'):
-            name = protein_record.id
-            data = {
-                'name': name,
-                'sequences': [{
-                    'protein': {
-                        'id': 'A',
-                        'sequence': str(protein_record.seq).upper()
-                    },
-                }],
-                'modelSeeds': [1],
-                'dialect': 'alphafold3',
-                'version': 1,
-            }
-            with (msa_folder / f'{name}.json').open('w') as f_out:
-                json.dump(
-                    data, 
-                    f_out,
-                    indent=True,
-                )
+        generate_af3_msa_input(fasta_path, msa_folder)
 
         msa_script = msa_script_raw.format(
             input=msa_folder.resolve().as_posix(),
@@ -265,6 +244,29 @@ def generate_msa_script(
         f_out.write(msa_script)
 
     return msa_script_path
+
+
+def generate_af3_msa_input(fasta_path : Path, msa_folder : Path) -> None:
+    for protein_record in SeqIO.parse(fasta_path, 'fasta'):
+        name = protein_record.id
+        data = {
+            'name': name,
+            'sequences': [{
+                'protein': {
+                    'id': 'A',
+                    'sequence': str(protein_record.seq).upper()
+                },
+            }],
+            'modelSeeds': [1],
+            'dialect': 'alphafold3',
+            'version': 1,
+        }
+        with (msa_folder / f'{name}.json').open('w') as f_out:
+            json.dump(
+                data, 
+                f_out,
+                indent=True,
+            )
 
 
 def generate_modelling_inputs(

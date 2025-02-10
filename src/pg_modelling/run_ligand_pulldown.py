@@ -173,6 +173,7 @@ def main():
     modelling_script_paths = []
     if not skip_modelling:
         # Generate inputs
+        logger.info('Generating modelling inputs')
         generate_modelling_inputs(proteins, ligands, models, n_predictions, msa_folder, model_dirs, n_cpus)
 
         # Generate modelling scripts

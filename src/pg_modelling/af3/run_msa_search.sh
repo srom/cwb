@@ -1,10 +1,11 @@
 #!/bin/bash
 #SBATCH --job-name=af3_msa_run
 #SBATCH --output={log_path}
-#SBATCH --partition=cpu
+#SBATCH --partition=gpu
 #SBATCH --qos=qos_batch
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --time={time_budget}
 
@@ -16,7 +17,7 @@ export CUDA_VISIBLE_DEVICES=""
 INPUT="{input}"
 INPUT="{output}"
 
-module load alphafold/3.0.0
+module load alphafold/3.0.1
 
 alphafold \
   --input_dir $INPUT \

@@ -40,13 +40,13 @@ $python_bin_path/python -m colabfold.mmseqs.search \
 	> $OUTPUT_LOG \
 	2> $ERROR_LOG
 
-echo "Rename MSA files"
+echo "Renaming MSA files" >> $OUTPUT_LOG
 cd $BASE_DIR
 module purge
 . load_conda.sh
 conda activate cwb
 
-python rename_a3m_script \
+python {rename_a3m_script} \
 	--a3m_folder $\OUTPUT \
 	--fasta $INPUT \
 	--output_folder $OUTPUT \
@@ -54,7 +54,7 @@ python rename_a3m_script \
 	2>> $ERROR_LOG
 
 if [[ "$run_protenix_postprocessing" == "true" ]]; then
-    echo "Run Protenix postprocessing step"
+    echo "Run Protenix postprocessing step" >> $OUTPUT_LOG
     module purge
     module load ColabFold/1.5.2-foss-2022a-CUDA-11.7.0
     

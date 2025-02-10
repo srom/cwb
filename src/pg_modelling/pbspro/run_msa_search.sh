@@ -47,7 +47,7 @@ module purge
 conda activate cwb
 
 python {rename_a3m_script} \
-	--a3m_folder $\OUTPUT \
+	--a3m_folder $OUTPUT \
 	--fasta $INPUT \
 	--output_folder $OUTPUT \
 	>> $OUTPUT_LOG \

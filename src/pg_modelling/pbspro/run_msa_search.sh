@@ -44,9 +44,9 @@ echo "Rename MSA files"
 cd ${BASE_DIR}
 module purge
 . load_conda.sh
-cd ${BASE_DIR}/amp-main
+conda activate cwb
 
-python -m src.db_utils.rename_a3m \
+python {rename_a3m_script} \
 	--a3m_folder ${OUTPUT} \
 	--fasta ${INPUT} \
 	--output_folder ${OUTPUT} \

@@ -291,4 +291,4 @@ def extract_protein_and_ligand_from_mmcif(
 
 
 def gen_model_seeds(n):
-    return [int(random.uniform(1, 100)) for _ in range(n)]
+    return [int(random.uniform(1, 1000)) for _ in range(n)]

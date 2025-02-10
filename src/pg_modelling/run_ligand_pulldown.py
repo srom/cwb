@@ -15,10 +15,9 @@ Inputs:
 - Output directory
 - Flags of supported model:
     - any of --af3, --protenix, --boltz, --chai
+- Flags to prevent running certain stages: --skip_msa, --skip_modelling, --skip_scoring
+- Number of predictions (~ number of random seeds)
 - Worfklow orchestrator: one of slurm or pbspro
-- Name of conda environments:
-    - Model environment (one for each model)
-    - Post-Processing environment (for scoring)
 - Time budget in hours for each stage:
     - MSA generation
     - Modelling
@@ -42,6 +41,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import random
 import sys
 from typing import Dict, Iterator, List, Tuple
 
@@ -77,6 +77,10 @@ def main():
         ('boltz', args.boltz), 
         ('chai', args.chai),
     ] if t[1]]
+    skip_msa = args.skip_msa
+    skip_modelling = args.skip_modelling
+    skip_scoring = args.skip_scoring
+    n_predictions = args.n_predictions
 
     if not proteins_fasta_path.is_file():
         logger.error(f'Input fasta file does not exist: {proteins_fasta_path}')
@@ -112,6 +116,10 @@ def main():
         f'\t- Output dir = {output_dir}\n'
         f'\t- Orchestrator = {orchestrator}\n'
         f'\t- Models = {models}\n'
+        f'\t- Skip MSA step = {skip_msa}\n'
+        f'\t- Skip modelling step = {skip_modelling}\n'
+        f'\t- Skip scoring step = {skip_scoring}\n'
+        f'\t- Number of predictions = {n_predictions}\n'
         f'\t- Time budget (hours) = {time_budget}\n'
         f'\t- Number of CPUs = {n_cpus}\n'
     ))
@@ -149,23 +157,35 @@ def main():
         model_dirs[model] = result_dir
 
     # Generate MSA script
-    msa_script_path = generate_msa_script(
-        fasta_path, 
-        models, 
-        msa_folder, 
-        logs_foder, 
-        orchestrator, 
-        max_runtime_in_hours=time_budget['msa'],
-    )
+    msa_script_path = None
+    if not skip_msa:
+        msa_script_path = generate_msa_script(
+            fasta_path, 
+            models, 
+            msa_folder, 
+            logs_foder, 
+            orchestrator, 
+            max_runtime_in_hours=time_budget['msa'],
+        )
 
-    # Generate inputs
-    generate_modelling_inputs(proteins, ligands, models, msa_folder, model_dirs, n_cpus)
+    modelling_script_paths = []
+    if not skip_modelling:
+        # Generate inputs
+        generate_modelling_inputs(proteins, ligands, models, n_predictions, msa_folder, model_dirs, n_cpus)
 
-    # Generate modelling scripts
-    modelling_script_paths = generate_modelling_scripts()
+        # Generate modelling scripts
+        modelling_script_paths = generate_modelling_scripts(
+            models, 
+            model_dirs,
+            n_predictions,
+            logs_foder,
+            max_runtime_in_hours=time_budget['modelling'],
+        )
 
-    # Generate scoring scripts
-    scoring_script_paths = generate_scoring_scripts()
+    scoring_script_paths = []
+    if not skip_scoring:
+        # Generate scoring scripts
+        scoring_script_paths = generate_scoring_scripts()
 
     # Orchestrate 
     orchestration_script_path = orchestrate_run(msa_script_path, modelling_script_paths, scoring_script_paths)
@@ -173,7 +193,7 @@ def main():
     # Run
     do_run(orchestration_script_path)
 
-    logger.info('Pulldown started')
+    logger.info('DONE')
     sys.exit(0)
 
 
@@ -185,8 +205,8 @@ def generate_msa_script(
     orchestrator : str,
     max_runtime_in_hours : int,
 ) -> Path:
+    current_path = Path(os.path.abspath(__file__)).parent
     if orchestrator == 'pbspro':
-        current_path = Path(os.path.abspath(__file__)).parent
         msa_script_path = current_path / 'pbspro' / 'run_msa_search.sh'
         with msa_script_path.open('r') as f:
             msa_script_raw = f.read()
@@ -201,11 +221,12 @@ def generate_msa_script(
             time_budget=encode_pbspro_time_budget(max_runtime_in_hours),
             run_protenix_postprocessing='true' if 'protenix' in models else 'false',
             run_chai_postprocessing='true' if 'chai' in models else 'false',
-            protenix_postprocessing_script=current_path / 'protenix' / 'run_colabfold_postprocess.py',
-            chai_postprocessing_script=current_path / 'chai' / 'run_colabfold_postprocess.py',
+            rename_a3m_script=(current_path / 'pbspro' / 'rename_a3m.py').as_posix(),
+            protenix_postprocessing_script=(current_path / 'protenix' / 'run_colabfold_postprocess.py').as_posix(),
+            chai_postprocessing_script=(current_path / 'chai' / 'run_colabfold_postprocess.py').as_posix(),
         )
     elif orchestrator == 'slurm':
-        msa_script_path = Path(os.path.abspath(__file__)) / 'af3' / 'run_msa_search.sh'
+        msa_script_path = current_path / 'af3' / 'run_msa_search.sh'
         with msa_script_path.open('r') as f:
             msa_script_raw = f.read()
 
@@ -233,7 +254,7 @@ def generate_msa_script(
         msa_script = msa_script_raw.format(
             input=msa_folder.resolve().as_posix(),
             output=msa_folder.resolve().as_posix(),
-            log_path=logs_foder / 'af3_msa_run_%j.log',
+            log_path=(logs_foder / 'af3_msa_run_%j.log').as_posix(),
             time_budget=encode_slurm_time_budget(max_runtime_in_hours),
         )
     else:
@@ -250,6 +271,7 @@ def generate_modelling_inputs(
     proteins : List[SeqRecord], 
     ligands : pd.DataFrame, 
     models : List[str], 
+    n_predictions : int,
     msa_folder : Path,
     model_dirs : Dict[str, Path], 
     n_cpus : int,
@@ -260,7 +282,7 @@ def generate_modelling_inputs(
                 model_dir = model_dirs[model]
 
                 if model == 'af3':
-                    generate_af3_input(protein, ligand_id, ligand_mol, model_dir, msa_folder)
+                    generate_af3_input(protein, ligand_id, ligand_mol, model_dir, n_predictions, msa_folder)
                 elif model == 'protenix':
                     generate_protenix_input(protein, ligand_id, ligand_mol, model_dir, msa_folder)
                 elif model == 'boltz':
@@ -271,8 +293,91 @@ def generate_modelling_inputs(
                     raise ValueError(f'Unknown model: {model}')
 
 
-def generate_modelling_scripts():
-    return []
+def generate_modelling_scripts(
+    models : List[str], 
+    model_dirs : Dict[str, Path],
+    n_predictions : int,
+    logs_foder : Path,
+    max_runtime_in_hours : int,
+):
+    script_paths = []
+    for model in models:
+        model_dir = model_dirs[model]
+
+        if model == 'af3':
+            af3_script_path = generate_af3_modelling_script(model_dir, logs_foder, max_runtime_in_hours)
+            script_paths.append(af3_script_path)
+
+        if model == 'protenix':
+            protenix_script_path = generate_protenix_modelling_script(model_dir, n_predictions, logs_foder, max_runtime_in_hours)
+            script_paths.append(protenix_script_path)
+
+        if model == 'boltz':
+            boltz_script_path = generate_boltz_modelling_script(model_dir, logs_foder, max_runtime_in_hours)
+            script_paths.append(boltz_script_path)
+        
+        if model == 'chai':
+            chai_script_path = generate_chai_modelling_script(model_dir, logs_foder, max_runtime_in_hours)
+            script_paths.append(chai_script_path)
+
+    return script_paths
+
+
+def generate_af3_modelling_script(model_dir : Path, logs_foder : Path, max_runtime_in_hours : int):
+    current_path = Path(os.path.abspath(__file__)).parent
+    raw_script_path = current_path / 'af3' / 'run_alphafold.sh'
+
+    with raw_script_path.open('r') as f:
+        af3_script_raw = f.read()
+
+    results_dir = model_dir / 'results'
+    results_dir.mkdir()
+
+    af3_script = af3_script_raw.format(
+        log_path=(logs_foder / 'af3_modelling_%j.log').as_posix(),
+        time_budget=encode_slurm_time_budget(max_runtime_in_hours),
+        input=(model_dir / 'inputs').as_posix(),
+        output=results_dir.as_posix(),
+    )
+
+    script_path = (model_dir / 'run_alphafold.sh')
+    with script_path.open('w') as f_out:
+        f_out.write(af3_script)
+
+    return script_path
+
+
+def generate_protenix_modelling_script(model_dir : Path, n_predictions : int, logs_foder : Path, max_runtime_in_hours : int):
+    current_path = Path(os.path.abspath(__file__)).parent
+    raw_script_path = current_path / 'af3' / 'run_protenix.sh'
+
+    with raw_script_path.open('r') as f:
+        protenix_script_raw = f.read()
+
+    results_dir = model_dir / 'results'
+    results_dir.mkdir()
+
+    protenix_script = protenix_script_raw.format(
+        input=(model_dir / 'inputs').resolve().as_posix(),
+        output=results_dir.resolve().as_posix(),
+        time_budget=encode_pbspro_time_budget(max_runtime_in_hours),
+        seeds=gen_protenix_model_seeds(n_predictions),
+        log_path=(logs_foder / 'protenix_modelling.log').as_posix(),
+    )
+
+    script_path = (model_dir / 'run_protenix.sh')
+    with script_path.open('w') as f_out:
+        f_out.write(protenix_script)
+
+    return script_path
+
+
+def generate_boltz_modelling_script(model_dir : Path, logs_foder : Path, max_runtime_in_hours : int):
+    raise NotImplementedError
+
+
+def generate_chai_modelling_script(model_dir : Path, logs_foder : Path, max_runtime_in_hours : int):
+    raise NotImplementedError
 
 
 def generate_scoring_scripts():
@@ -296,6 +401,7 @@ def generate_af3_input(
     ligand_id : str, 
     ligand_mol : Chem.Mol, 
     model_dir : Path, 
+    n_predictions : int,
     msa_folder : Path,
 ):
     pname = protein.id.lower()
@@ -323,7 +429,7 @@ def generate_af3_input(
     name = f'{protein.id}__{ligand_id}'
     spec = copy.deepcopy(protein_spec)
     spec['name'] = name
-    spec['modelSeeds'] = gen_model_seeds(3)
+    spec['modelSeeds'] = gen_model_seeds(n_predictions)
     spec['sequences'] += ligands_spec['sequences']
     spec['userCCD'] = ligands_spec['userCCD']
 
@@ -422,6 +528,24 @@ def encode_slurm_time_budget(max_runtime_in_hours : int) -> str:
     return f'{days}-{str(hours).zfill(2)}:00:00'
 
 
+def gen_protenix_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> str:
+    if n >= max_seed:
+        raise ValueError(
+            f'Number of models requested ({n}) is too high for the max seed set ({max_seed})'
+        )
+
+    for _ in range(n_tries):
+        seeds = [int(random.uniform(1, max_seed)) for _ in range(n)]
+        if len(seeds) == len(set(seeds)):
+            break
+    
+    if len(seeds) != n:
+        # This should never happen
+        raise ValueError(f"Couldn't generate {n} unique random seeds")
+
+    return ','.join([str(s) for s in seeds])
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description=f'Protein-Ligand pulldown orchestrator.\n\n{DOC}',
@@ -471,6 +595,27 @@ def parse_args():
         '--chai', 
         action='store_true',
         help='Run Chai (https://github.com/chaidiscovery/chai-lab)',
+    )
+    parser.add_argument(
+        '--skip_msa', 
+        action='store_true',
+        help='Skip MSA step',
+    )
+    parser.add_argument(
+        '--skip_modelling', 
+        action='store_true',
+        help='Skip modelling step',
+    )
+    parser.add_argument(
+        '--skip_scoring', 
+        action='store_true',
+        help='Skip scoring step',
+    )
+    parser.add_argument(
+        '--n_predictions', 
+        type=int,
+        default=1,
+        help='Number of predictions',
     )
     parser.add_argument(
         '--hours_msa', 

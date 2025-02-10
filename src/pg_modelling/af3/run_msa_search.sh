@@ -16,7 +16,7 @@ export CUDA_VISIBLE_DEVICES=""
 INPUT="{input}"
 INPUT="{output}"
 
-module load alphafold/3.0.1
+module load alphafold/3.0.0
 
 alphafold \
   --input_dir $INPUT \

@@ -42,6 +42,7 @@ import logging
 import os
 from pathlib import Path
 import random
+import subprocess
 import sys
 from typing import Dict, Iterator, List, Tuple
 
@@ -188,7 +189,13 @@ def main():
         scoring_script_paths = generate_scoring_scripts()
 
     # Orchestrate 
-    orchestration_script_path = orchestrate_run(msa_script_path, modelling_script_paths, scoring_script_paths)
+    orchestration_script_path = orchestrate_run(
+        orchestrator, 
+        output_dir,
+        msa_script_path, 
+        modelling_script_paths, 
+        scoring_script_paths,
+    )
 
     # Run
     returncode = do_run(orchestration_script_path)
@@ -278,8 +285,8 @@ def generate_modelling_inputs(
     model_dirs : Dict[str, Path], 
     n_cpus : int,
 ) -> None:
-    for protein in proteins:
-        for ligand_id, ligand_mol in parse_ligands(ligands, n_cpus):
+    for ligand_id, ligand_mol in parse_ligands(ligands, n_cpus):
+        for protein in proteins:
             for model in models:
                 model_dir = model_dirs[model]
 
@@ -387,15 +394,81 @@ def generate_scoring_scripts():
 
 
 def orchestrate_run(
+    orchestrator : str,
+    output_dir : Path,
     msa_script_path : Path, 
     modelling_script_paths : List[Path], 
     scoring_script_paths : List[Path],
 ) -> Path:
-    return None
+    orchestration_script_path = output_dir / 'run_pulldown.sh'
+
+    script_str = (
+        '#!/bin/bash\n'
+        'set -e\n'
+    )
+    if orchestrator == 'pbspro':
+        msa = False
+        if msa_script_path is not None:
+            msa = True
+            script_str += f'msa_job_id=$(qsub -q hx {msa_script_path.resolve().as_posix()})'
+
+        modelling = False
+        if len(modelling_script_paths) > 0:
+            modelling = True
+            for i, modelling_script_path in enumerate(modelling_script_paths):
+                if msa:
+                    script_str += (
+                        f'modelling_job_id_{i}=$(qsub -q hx -W depend=afterok:$msa_job_id {modelling_script_path.resolve().as_posix()})'
+                    )
+                else:
+                    script_str += f'modelling_job_id_{i}=$(qsub -q hx {modelling_script_path.resolve().as_posix()})'
+
+        if len(scoring_script_paths) > 0:
+            for i, scoring_script_path in enumerate(scoring_script_paths):
+                if modelling:
+                    script_str += f'qsub -q hx -W depend=afterok:$modelling_job_id_{i} {scoring_script_path.resolve().as_posix()}'
+                else:
+                    script_str += f'qsub -q hx {scoring_script_path.resolve().as_posix()}'
+    
+    elif orchestrator == 'slurm':
+        msa = False
+        if msa_script_path is not None:
+            msa = True
+            script_str += f'msa_job_id=$(sbatch --parsable {msa_script_path.resolve().as_posix()})'
+
+        modelling = False
+        if len(modelling_script_paths) > 0:
+            modelling = True
+            for i, modelling_script_path in enumerate(modelling_script_paths):
+                if msa:
+                    script_str += (
+                        f'modelling_job_id_{i}=$(sbatch --parsable --dependency=afterok:$msa_job_id {modelling_script_path.resolve().as_posix()})'
+                    )
+                else:
+                    script_str += f'modelling_job_id_{i}=$(sbatch --parsable {modelling_script_path.resolve().as_posix()})'
+
+        if len(scoring_script_paths) > 0:
+            for i, scoring_script_path in enumerate(scoring_script_paths):
+                if modelling:
+                    script_str += f'sbatch --parsable --dependency=afterok:$modelling_job_id_{i} {scoring_script_path.resolve().as_posix()}'
+                else:
+                    script_str += f'sbatch --parsable {scoring_script_path.resolve().as_posix()}'
+    else:
+        raise ValueError(f'Unknown orchestrator: {orchestrator}')
+
+    with orchestration_script_path.open('w') as f_out:
+        f_out.write(script_str)
+
+    return orchestration_script_path
 
 
 def do_run(orchestration_script_path : Path) -> None:
-    pass
+    result = subprocess.run(
+        ['bash', orchestration_script_path.resolve().as_posix()],
+        stdout=sys.stdout, 
+        stderr=sys.stderr,
+    )
+    return result.returncode
 
 
 def generate_af3_input(

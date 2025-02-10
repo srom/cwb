@@ -130,7 +130,7 @@ def main():
         protein.id = sanitize_protein_id(protein.id)
     
     ligands = pd.read_csv(ligands_csv_path)
-    ligands['ligand_id'] = ligands.apply(lambda ligand_id: sanitize_ligand_name(ligand_id))
+    ligands['ligand_id'] = ligands['ligand_id'].apply(lambda ligand_id: sanitize_ligand_name(ligand_id))
     ligands = ligands.set_index('ligand_id')
 
     logger.info(f'Number of sequences: {len(proteins):,}')

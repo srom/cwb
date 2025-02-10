@@ -70,14 +70,22 @@ def main():
     logger.info('Running AlphaFold 3')
 
     # Generate inputs
-    for ligand_spec_path in ligand_specs_dir.iterdir():
-        if not ligand_spec_path.name.endswith('.json'):
+    for protein_spec_dir in ligand_specs_dir.iterdir():
+        if not protein_spec_dir.is_dir():
             continue
 
-        for protein_spec_dir in ligand_specs_dir.iterdir():
-            if protein_spec_dir.is_dir():
-                protein_spec_path = protein_spec_dir / f'{protein_spec_dir.name}_data.json'
-                generate_spec(protein_spec_path, ligand_spec_path, n_predictions, af3_inputs_dir)
+        protein_spec_path = protein_spec_dir / f'{protein_spec_dir.name}_data.json'
+        with protein_spec_path.open() as f:
+            protein_spec = json.load(f)
+
+        for ligand_spec_path in ligand_specs_dir.iterdir():
+            if not ligand_spec_path.name.endswith('.json'):
+                continue
+
+            with ligand_spec_path.open() as f:
+                ligand_spec = json.load(f)
+
+            generate_spec(protein_spec, ligand_spec, n_predictions, af3_inputs_dir)
 
     # Run AF3
     returncode = run_af3(af3_inputs_dir, output_dir)
@@ -100,17 +108,11 @@ def run_af3(specs_dir : Path, output_dir : Path):
 
 
 def generate_spec(
-    protein_spec_path : Path,
-    ligand_spec_path : Path,
+    protein_spec : dict,
+    ligand_spec : dict,
     n_predictions : int,
     af3_inputs_dir : Path,
-):
-    with protein_spec_path.open() as f:
-        protein_spec = json.load(f)
-
-    with ligand_spec_path.open() as f:
-        ligand_spec = json.load(f)
-    
+):  
     spec = copy.deepcopy(protein_spec)
     name = ligand_spec['name']
     spec['name'] = name

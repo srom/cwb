@@ -1,5 +1,4 @@
-#! /bin/bash
-
+#!/bin/bash
 #SBATCH --job-name=af3_msa_run
 #SBATCH --output={log_path}
 #SBATCH --partition=cpu
@@ -10,6 +9,9 @@
 #SBATCH --time={time_budget}
 
 set -e
+
+export JAX_PLATFORM_NAME=cpu
+export CUDA_VISIBLE_DEVICES=""
 
 INPUT="{input}"
 INPUT="{output}"

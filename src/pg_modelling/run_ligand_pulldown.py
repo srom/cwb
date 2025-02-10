@@ -538,7 +538,7 @@ def generate_protenix_input(
     pdb_file = pdb_folder / f'{ligand_id}.pdb'
     Chem.MolToPDBFile(ligand_mol, pdb_file.as_posix())
 
-    precomputed_msa_dir = msa_folder / 'msa' / f'{protein.id}'
+    precomputed_msa_dir = msa_folder / 'protenix_msa' / f'{protein.id}'
 
     name = f'{protein.id}__{ligand_id}'
     spec = {

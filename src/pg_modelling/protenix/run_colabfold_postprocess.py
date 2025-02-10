@@ -52,7 +52,7 @@ class A3MProcessor:
             non_pairing = ">query\n" + "\n".join(self.a3m_content.split("\n")[1:])
             query_seq = self.a3m_content.split("\n")[1]
             pairing = f">query\n{query_seq}"
-            msa_path = self.out_dir / 'msa'
+            msa_path = self.out_dir / 'protenix_msa'
             msa_path.mkdir(exist_ok=True)
             msa_path = msa_path / f'{filename}'
             msa_path.mkdir(exist_ok=True)
@@ -84,7 +84,7 @@ class A3MProcessor:
     def split_sequences(self) -> None:
         """Split A3M file into pairing and non-pairing sequences."""
         filename = self.a3m_file.name.replace('.a3m', '')
-        out_dir = self.out_dir / 'msa'
+        out_dir = self.out_dir / 'protenix_msa'
         out_dir.mkdir(exist_ok=True)
         out_dir = out_dir / f'{filename}'
 

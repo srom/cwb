@@ -98,7 +98,7 @@ def main():
     elif args.af3 and orchestrator != 'slurm':
         logger.error('AlphaFold 3 is only supported on SLURM for now')
         sys.exit(1)
-    elif (args.protenis or args.boltz or args.chai) and orchestrator != 'pbspro':
+    elif (args.protenix or args.boltz or args.chai) and orchestrator != 'pbspro':
         logger.error('Protenix, Bolz and Chai are only supported on PBSPro for now')
         sys.exit(1)
 

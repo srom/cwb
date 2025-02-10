@@ -410,7 +410,7 @@ def orchestrate_run(
         msa = False
         if msa_script_path is not None:
             msa = True
-            script_str += f'msa_job_id=$(qsub -q hx {msa_script_path.resolve().as_posix()})'
+            script_str += f'msa_job_id=$(qsub -q hx {msa_script_path.resolve().as_posix()})\n'
 
         modelling = False
         if len(modelling_script_paths) > 0:
@@ -418,23 +418,23 @@ def orchestrate_run(
             for i, modelling_script_path in enumerate(modelling_script_paths):
                 if msa:
                     script_str += (
-                        f'modelling_job_id_{i}=$(qsub -q hx -W depend=afterok:$msa_job_id {modelling_script_path.resolve().as_posix()})'
+                        f'modelling_job_id_{i}=$(qsub -q hx -W depend=afterok:$msa_job_id {modelling_script_path.resolve().as_posix()})\n'
                     )
                 else:
-                    script_str += f'modelling_job_id_{i}=$(qsub -q hx {modelling_script_path.resolve().as_posix()})'
+                    script_str += f'modelling_job_id_{i}=$(qsub -q hx {modelling_script_path.resolve().as_posix()})\n'
 
         if len(scoring_script_paths) > 0:
             for i, scoring_script_path in enumerate(scoring_script_paths):
                 if modelling:
-                    script_str += f'qsub -q hx -W depend=afterok:$modelling_job_id_{i} {scoring_script_path.resolve().as_posix()}'
+                    script_str += f'qsub -q hx -W depend=afterok:$modelling_job_id_{i} {scoring_script_path.resolve().as_posix()}\n'
                 else:
-                    script_str += f'qsub -q hx {scoring_script_path.resolve().as_posix()}'
+                    script_str += f'qsub -q hx {scoring_script_path.resolve().as_posix()}\n'
     
     elif orchestrator == 'slurm':
         msa = False
         if msa_script_path is not None:
             msa = True
-            script_str += f'msa_job_id=$(sbatch --parsable {msa_script_path.resolve().as_posix()})'
+            script_str += f'msa_job_id=$(sbatch --parsable {msa_script_path.resolve().as_posix()})\n'
 
         modelling = False
         if len(modelling_script_paths) > 0:
@@ -442,17 +442,17 @@ def orchestrate_run(
             for i, modelling_script_path in enumerate(modelling_script_paths):
                 if msa:
                     script_str += (
-                        f'modelling_job_id_{i}=$(sbatch --parsable --dependency=afterok:$msa_job_id {modelling_script_path.resolve().as_posix()})'
+                        f'modelling_job_id_{i}=$(sbatch --parsable --dependency=afterok:$msa_job_id {modelling_script_path.resolve().as_posix()})\n'
                     )
                 else:
-                    script_str += f'modelling_job_id_{i}=$(sbatch --parsable {modelling_script_path.resolve().as_posix()})'
+                    script_str += f'modelling_job_id_{i}=$(sbatch --parsable {modelling_script_path.resolve().as_posix()})\n'
 
         if len(scoring_script_paths) > 0:
             for i, scoring_script_path in enumerate(scoring_script_paths):
                 if modelling:
-                    script_str += f'sbatch --parsable --dependency=afterok:$modelling_job_id_{i} {scoring_script_path.resolve().as_posix()}'
+                    script_str += f'sbatch --parsable --dependency=afterok:$modelling_job_id_{i} {scoring_script_path.resolve().as_posix()}\n'
                 else:
-                    script_str += f'sbatch --parsable {scoring_script_path.resolve().as_posix()}'
+                    script_str += f'sbatch --parsable {scoring_script_path.resolve().as_posix()}\n'
     else:
         raise ValueError(f'Unknown orchestrator: {orchestrator}')
 

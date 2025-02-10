@@ -12,7 +12,9 @@
 
 module load alphafold/3.0.1
 
-alphafold \
-    --input_dir {input} \
-    --output_dir {output} \
-    --norun_data_pipeline
+python {run_af3_python_script} \
+    --protein_specs_dir "{protein_specs_dir}" \
+    --ligand_specs_dir "{ligand_specs_dir}" \
+    --af3_inputs_dir "{af3_inputs_dir}" \
+    --output_dir "{output_dir}" \
+    --n_predictions {n_predictions}

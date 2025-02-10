@@ -36,7 +36,6 @@ Logic:
 TODO: should this be a nextflow pipeline instead?
 """
 import argparse
-import copy
 import json
 import logging
 import os
@@ -56,7 +55,6 @@ from src.pg_modelling.ligand_utils import (
     generate_ccd_from_mol,
     sanitize_protein_id,
     sanitize_ligand_name,
-    gen_model_seeds,
 )
 
 
@@ -174,11 +172,12 @@ def main():
     if not skip_modelling:
         # Generate inputs
         logger.info('Generating modelling inputs')
-        generate_modelling_inputs(proteins, ligands, models, n_predictions, msa_folder, model_dirs, n_cpus)
+        generate_modelling_inputs(proteins, ligands, models, msa_folder, model_dirs, n_cpus)
 
         # Generate modelling scripts
         logger.info('Generating modelling scripts')
         modelling_script_paths = generate_modelling_scripts(
+            msa_folder,
             models, 
             model_dirs,
             n_predictions,
@@ -290,7 +289,6 @@ def generate_modelling_inputs(
     proteins : List[SeqRecord], 
     ligands : pd.DataFrame, 
     models : List[str], 
-    n_predictions : int,
     msa_folder : Path,
     model_dirs : Dict[str, Path], 
     n_cpus : int,
@@ -301,7 +299,7 @@ def generate_modelling_inputs(
                 model_dir = model_dirs[model]
 
                 if model == 'af3':
-                    generate_af3_input(protein, ligand_id, ligand_mol, model_dir, n_predictions, msa_folder)
+                    generate_af3_input(protein, ligand_id, ligand_mol, model_dir)
                 elif model == 'protenix':
                     generate_protenix_input(protein, ligand_id, ligand_mol, model_dir, msa_folder)
                 elif model == 'boltz':
@@ -313,6 +311,7 @@ def generate_modelling_inputs(
 
 
 def generate_modelling_scripts(
+    msa_folder : Path,
     models : List[str], 
     model_dirs : Dict[str, Path],
     n_predictions : int,
@@ -324,7 +323,7 @@ def generate_modelling_scripts(
         model_dir = model_dirs[model]
 
         if model == 'af3':
-            af3_script_path = generate_af3_modelling_script(model_dir, logs_foder, max_runtime_in_hours)
+            af3_script_path = generate_af3_modelling_script(msa_folder, model_dir, n_predictions, logs_foder, max_runtime_in_hours)
             script_paths.append(af3_script_path)
 
         if model == 'protenix':
@@ -342,12 +341,22 @@ def generate_modelling_scripts(
     return script_paths
 
 
-def generate_af3_modelling_script(model_dir : Path, logs_foder : Path, max_runtime_in_hours : int):
+def generate_af3_modelling_script(
+    msa_folder : Path, 
+    model_dir : Path, 
+    n_predictions : int, 
+    logs_foder : Path, 
+    max_runtime_in_hours : int,
+):
     current_path = Path(os.path.abspath(__file__)).parent
     raw_script_path = current_path / 'af3' / 'run_alphafold.sh'
+    run_af3_python_script = current_path / 'af3' / 'run_alphafold.py'
 
     with raw_script_path.open('r') as f:
         af3_script_raw = f.read()
+
+    inputs_dir = model_dir / 'inputs'
+    inputs_dir.mkdir(exist_ok=True)
 
     results_dir = model_dir / 'results'
     results_dir.mkdir()
@@ -355,8 +364,12 @@ def generate_af3_modelling_script(model_dir : Path, logs_foder : Path, max_runti
     af3_script = af3_script_raw.format(
         log_path=(logs_foder / 'af3_modelling_%j.log').as_posix(),
         time_budget=encode_slurm_time_budget(max_runtime_in_hours),
-        input=(model_dir / 'inputs').as_posix(),
-        output=results_dir.as_posix(),
+        run_af3_python_script=run_af3_python_script.as_posix(),
+        protein_specs_dir=msa_folder.resolve().as_posix(),
+        ligand_specs_dir=(model_dir / 'ligands').as_posix(),
+        af3_inputs_dir=inputs_dir.resolve().as_posix(),
+        output_dir=results_dir.resolve().as_posix(),
+        n_predictions=n_predictions,
     )
 
     script_path = (model_dir / 'run_alphafold.sh')
@@ -486,14 +499,7 @@ def generate_af3_input(
     ligand_id : str, 
     ligand_mol : Chem.Mol, 
     model_dir : Path, 
-    n_predictions : int,
-    msa_folder : Path,
 ):
-    pname = protein.id.lower()
-    protein_spec_path = msa_folder / f'{pname}' / f'{pname}_data.json'
-    with protein_spec_path.open() as f:
-        protein_spec = json.load(f)
-
     ligand_seq = {
         'ligand': {
             'id': 'B',
@@ -506,23 +512,18 @@ def generate_af3_input(
         print(f'Error for ligand: {ligand_id}')
         raise
 
-    ligands_spec = {
+    name = f'{protein.id}__{ligand_id}'
+    ligand_spec = {
+        'name': name,
         'sequences': [ligand_seq],
         'userCCD': ccd_data,
     }
 
-    name = f'{protein.id}__{ligand_id}'
-    spec = copy.deepcopy(protein_spec)
-    spec['name'] = name
-    spec['modelSeeds'] = gen_model_seeds(n_predictions)
-    spec['sequences'] += ligands_spec['sequences']
-    spec['userCCD'] = ligands_spec['userCCD']
+    ligands_dir = model_dir / 'ligands'
+    ligands_dir.mkdir(exist_ok=True)
 
-    output_dir = model_dir / 'inputs'
-    output_dir.mkdir(exist_ok=True)
-
-    with (output_dir / f'{name}.json').open('w') as f_out:
-        json.dump(spec, f_out, indent=True)
+    with (ligands_dir / f'{ligand_id}.json').open('w') as f_out:
+        json.dump(ligand_spec, f_out, indent=True)
 
 
 def generate_protenix_input(

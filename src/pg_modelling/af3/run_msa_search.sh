@@ -8,8 +8,6 @@
 #SBATCH --mem=32G
 #SBATCH --time={time_budget}
 
-set -e
-
 INPUT="{input}"
 INPUT="{output}"
 

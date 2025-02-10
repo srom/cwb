@@ -11,7 +11,7 @@
 INPUT="{input}"
 INPUT="{output}"
 
-module load alphafold/3.0.0
+module load alphafold/3.0.1
 
 alphafold \
   --input_dir $INPUT \

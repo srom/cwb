@@ -111,7 +111,7 @@ def main():
 
     logger.info('Running protein-ligand pulldown orchestrator')
     logger.info((
-        'Inputs:\n',
+        'Inputs:\n'
         f'\t- Proteins fasta path = {proteins_fasta_path}\n'
         f'\t- Ligands csv path = {ligands_csv_path}\n'
         f'\t- Output dir = {output_dir}\n'
@@ -140,7 +140,7 @@ def main():
     ligands.to_csv(output_dir / 'ligands.csv')
     fasta_path = output_dir / 'proteins.fasta'
     with fasta_path.open('w') as f_out:
-        SeqIO.write(proteins.values(), f_out, 'fasta')
+        SeqIO.write(proteins, f_out, 'fasta')
 
     # Create MSA folder
     msa_folder = output_dir / 'msa'

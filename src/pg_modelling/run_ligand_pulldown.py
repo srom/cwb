@@ -305,7 +305,7 @@ def generate_modelling_inputs(
                 elif model == 'boltz':
                     generate_boltz_input(protein, ligand_id, ligand_mol, model_dir, msa_folder)
                 elif model == 'chai':
-                    generate_chai_input(protein, ligand_id, ligand_mol, model_dir, msa_folder)
+                    generate_chai_input(protein, ligand_id, ligand_mol, model_dir)
                 else:
                     raise ValueError(f'Unknown model: {model}')
 
@@ -335,7 +335,7 @@ def generate_modelling_scripts(
             script_paths.append(boltz_script_path)
         
         if model == 'chai':
-            chai_script_path = generate_chai_modelling_script(model_dir, n_predictions, logs_foder, max_runtime_in_hours)
+            chai_script_path = generate_chai_modelling_script(msa_folder, model_dir, n_predictions, logs_foder, max_runtime_in_hours)
             script_paths.append(chai_script_path)
 
     return script_paths
@@ -429,8 +429,36 @@ def generate_boltz_modelling_script(model_dir : Path, n_predictions : int, logs_
     return script_path
 
 
-def generate_chai_modelling_script(model_dir : Path, n_predictions : int, logs_foder : Path, max_runtime_in_hours : int):
-    raise NotImplementedError
+def generate_chai_modelling_script(
+    msa_folder : Path, 
+    model_dir : Path, 
+    n_predictions : int, 
+    logs_foder : Path, 
+    max_runtime_in_hours : int,
+):
+    current_path = Path(os.path.abspath(__file__)).parent
+    raw_script_path = current_path / 'boltz' / 'run_chai.sh'
+
+    with raw_script_path.open('r') as f:
+        chai_script_raw = f.read()
+
+    results_dir = model_dir / 'results'
+    results_dir.mkdir(exist_ok=True)
+
+    chai_script = chai_script_raw.format(
+        input=(model_dir / 'inputs').resolve().as_posix(),
+        output=results_dir.resolve().as_posix(),
+        msa_folder=(msa_folder / 'chai_msa').resolve().as_posix(),
+        time_budget=encode_pbspro_time_budget(max_runtime_in_hours),
+        seeds=gen_chai_model_seeds(n_predictions),
+        log_path=(logs_foder / 'chai_modelling.log').as_posix(),
+    )
+
+    script_path = model_dir / 'run_chai.sh'
+    with script_path.open('w') as f_out:
+        f_out.write(chai_script)
+
+    return script_path
 
 
 def generate_scoring_scripts():
@@ -639,9 +667,23 @@ def generate_chai_input(
     ligand_id : str, 
     ligand_mol : Chem.Mol, 
     model_dir : Path, 
-    msa_folder : Path,
 ):
-    raise NotImplementedError
+    name = f'{protein.id}__{ligand_id}'
+    records = [
+        protein,
+        SeqRecord(
+            seq=Chem.MolToSmiles(ligand_mol),
+            id=ligand_id,
+            name='',
+            description='',
+        )
+    ]
+
+    output_dir = model_dir / 'inputs'
+    output_dir.mkdir(exist_ok=True)
+
+    with (output_dir / f'{name}.fasta').open('w') as f_out:
+        SeqIO.write(records, f_out, 'fasta')
 
 
 def parse_ligands(ligands : pd.DataFrame, n_cpus : int) -> Iterator[Tuple[str, Chem.Mol]]:
@@ -688,6 +730,10 @@ def gen_protenix_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100
 
 def gen_boltz_model_seeds(n, max_seed : int = 1000, n_tries : int = 100) -> str:
     return ' '.join([str(s) for s in gen_seeds(n, max_seed, n_tries)])
+
+
+def gen_chai_model_seeds(n, max_seed : int = 1000, n_tries : int = 100) -> str:
+    return gen_boltz_model_seeds(n, max_seed, n_tries)
 
 
 def parse_args():

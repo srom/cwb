@@ -54,21 +54,18 @@ python {rename_a3m_script} \
 	2>> $ERROR_LOG
 
 if [[ "$run_protenix_postprocessing" == "true" ]]; then
-    echo "Run Protenix postprocessing step" >> $OUTPUT_LOG
-    module purge
-    module load ColabFold/1.5.2-foss-2022a-CUDA-11.7.0
+    echo "Running Protenix postprocessing step" >> $OUTPUT_LOG
     
-    $python_bin_path/python $PROTENIX_POSTPROCESS_SCRIPT \
+    python $PROTENIX_POSTPROCESS_SCRIPT \
 	    $OUTPUT \
 	    >> $OUTPUT_LOG \
 	    2>> $ERROR_LOG
 fi
 
 if [[ "$run_chai_postprocessing" == "true" ]]; then
-    echo "Run Chai postprocessing step"
-	cd $BASE_DIR
-    module purge
-	. load_conda.sh
+    echo "Running Chai postprocessing step" >> $OUTPUT_LOG
+
+	conda deactivate
 	conda activate chai
 
 	python $CHAI_POSTPROCESS_SCRIPT \

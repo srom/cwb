@@ -1,5 +1,8 @@
+import argparse
 import json
+import logging
 from pathlib import Path
+import sys
 
 import numpy as np
 import pandas as pd
@@ -7,12 +10,15 @@ import pandas as pd
 from src.pg_modelling.ligand_utils import run_pose_busters, POSEBUSTERS_CHECKS
 
 
+logger = logging.getLogger(__name__)
+
+
 def process_protenix_ligand_pulldown_results(
     protein_name : str, 
     results_folder : Path,
     run_posebusters : bool = False,
     score_all_sample : bool = False,
-):
+) -> pd.DataFrame:
     data = {
         'protein_name': [],
         'ligand_name': [],
@@ -22,7 +28,7 @@ def process_protenix_ligand_pulldown_results(
         'confidence': [],
     }
     for ligand_folder in results_folder.iterdir():
-        if not ligand_folder.name.startswith(protein_name):
+        if not ligand_folder.is_dir() or not ligand_folder.name.startswith(protein_name):
             continue
 
         ligand_folder_name = ligand_folder.name
@@ -79,8 +85,8 @@ def process_protenix_ligand_pulldown_results(
         protenix_results_df['energy_ratio'] = energy_ratios
 
         protenix_results_df = protenix_results_df.sort_values(
-            ['posebusters_score', 'energy_ratio', 'confidence'], 
-            ascending=[False, True, False],
+            ['posebusters_score', 'confidence', 'energy_ratio'], 
+            ascending=[False, False, True],
         )
 
     return protenix_results_df.drop_duplicates([
@@ -112,3 +118,54 @@ def run_protenix_posebusters(structure_path_str : str, ligand_id='l01'):
         error_str = ','.join(errs)
     
     return pose_busters_score, error_str, energy_ratio
+
+
+def main():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s %(processName)-10s (%(levelname)s) %(message)s')
+
+    parser = argparse.ArgumentParser(description=f'Scoring script for Protenix')
+    parser.add_argument(
+        '-i', '--modelling_dir', 
+        type=Path,
+        required=True,
+        help='Path to directory containing the modelling results',
+    )
+    parser.add_argument(
+        '-o', '--output_path', 
+        type=Path,
+        required=True,
+        help='Path to output CSV file',
+    )
+    args = parser.parse_args()
+
+    modelling_dir = args.modelling_dir
+    output_path = args.output_path
+
+    if not modelling_dir.is_dir():
+        logger.error(f'Directory does not exist: {modelling_dir}')
+        sys.exit(1)
+
+    scores = []
+    for p in modelling_dir.glob('*__*'):
+        if not p.is_dir():
+            continue
+
+        protein_name = p.name.split('__')[0]
+
+        score_df = process_protenix_ligand_pulldown_results(
+            protein_name, 
+            modelling_dir, 
+            run_posebusters=True, 
+            score_all_sample=True,
+        )
+        scores.append(score_df)
+
+    scores_df = pd.concat(scores)
+    scores_df.to_csv(output_path)
+
+    logger.info('DONE')
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()

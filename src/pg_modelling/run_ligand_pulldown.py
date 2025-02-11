@@ -190,7 +190,13 @@ def main():
     if not skip_scoring:
         # Generate scoring scripts
         logger.info('Generating scoring scripts')
-        scoring_script_paths = generate_scoring_scripts()
+        scoring_script_paths = generate_scoring_scripts(
+            models, 
+            model_dirs, 
+            orchestrator,
+            logs_foder,
+            max_runtime_in_hours=time_budget['scoring'],
+        )
 
     # Orchestrate
     logger.info('Generating orchestration script')
@@ -318,7 +324,7 @@ def generate_modelling_scripts(
     n_predictions : int,
     logs_foder : Path,
     max_runtime_in_hours : int,
-):
+) -> List[Path]:
     script_paths = []
     for model in models:
         model_dir = model_dirs[model]
@@ -462,8 +468,55 @@ def generate_chai_modelling_script(
     return script_path
 
 
-def generate_scoring_scripts():
-    return []
+def generate_scoring_scripts(
+    models : List[str], 
+    model_dirs : Dict[str, Path],
+    orchestrator : str,
+    logs_foder : Path,
+    max_runtime_in_hours : int,
+) -> List[Path]:
+    script_paths = []
+    for model in models:
+        model_dir = model_dirs[model]
+
+        script_path = generate_scoring_script(model, model_dir, orchestrator, logs_foder, max_runtime_in_hours)
+        script_paths.append(script_path)
+
+    return script_paths
+
+
+def generate_scoring_script(
+    model : str, 
+    model_dir : Path, 
+    orchestrator : str,
+    logs_foder : Path, 
+    max_runtime_in_hours : int,
+) -> Path:
+    current_path = Path(os.path.abspath(__file__)).parent
+    raw_script_path = current_path / model / f'score_{model}.sh'
+
+    with raw_script_path.open('r') as f:
+        script_raw = f.read()
+
+    if orchestrator == 'pbspro':
+        time_budget_str = encode_pbspro_time_budget(max_runtime_in_hours)
+    else:
+        time_budget_str = encode_slurm_time_budget(max_runtime_in_hours)
+
+    output_path = model_dir / 'scores.csv'
+
+    script = script_raw.format(
+        input=(model_dir / 'results').resolve().as_posix(),
+        output=output_path.resolve().as_posix(),
+        log_path=(logs_foder / f'{model}_scoring.log').resolve().as_posix(),
+        time_budget=time_budget_str,
+    )
+
+    script_path = model_dir / f'score_{model}.sh'
+    with script_path.open('w') as f_out:
+        f_out.write(script)
+
+    return script_path
 
 
 def orchestrate_run(

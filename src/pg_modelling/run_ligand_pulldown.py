@@ -142,17 +142,17 @@ def main():
 
     # Create MSA folder
     msa_folder = output_dir / 'msa'
-    msa_folder.mkdir()
+    msa_folder.mkdir(exist_ok=True)
 
     # Create log folder
     logs_foder = output_dir / 'logs'
-    logs_foder.mkdir()
+    logs_foder.mkdir(exist_ok=True)
 
     # Create model output folders
     model_dirs = {}
     for model in models:
         result_dir = output_dir / f'{model}'
-        result_dir.mkdir()
+        result_dir.mkdir(exist_ok=True)
         model_dirs[model] = result_dir
 
     msa_script_path = None
@@ -359,7 +359,7 @@ def generate_af3_modelling_script(
     inputs_dir.mkdir(exist_ok=True)
 
     results_dir = model_dir / 'results'
-    results_dir.mkdir()
+    results_dir.mkdir(exist_ok=True)
 
     af3_script = af3_script_raw.format(
         log_path=(logs_foder / 'af3_modelling_%j.log').as_posix(),
@@ -387,7 +387,7 @@ def generate_protenix_modelling_script(model_dir : Path, n_predictions : int, lo
         protenix_script_raw = f.read()
 
     results_dir = model_dir / 'results'
-    results_dir.mkdir()
+    results_dir.mkdir(exist_ok=True)
 
     protenix_script = protenix_script_raw.format(
         input=(model_dir / 'inputs').resolve().as_posix(),

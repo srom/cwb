@@ -437,7 +437,7 @@ def generate_chai_modelling_script(
     max_runtime_in_hours : int,
 ):
     current_path = Path(os.path.abspath(__file__)).parent
-    raw_script_path = current_path / 'boltz' / 'run_chai.sh'
+    raw_script_path = current_path / 'chai' / 'run_chai.sh'
 
     with raw_script_path.open('r') as f:
         chai_script_raw = f.read()

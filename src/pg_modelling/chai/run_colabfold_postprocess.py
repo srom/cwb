@@ -30,7 +30,7 @@ def main():
     for msa_file in msa_dir.glob('*.a3m'):
         logger.info(f'Converting MSA file: {msa_file}')
         with tempfile.TemporaryDirectory() as msa_tempdir:
-            a3m_tmp_file = Path(msa_tempdir) / {msa_file.name}
+            a3m_tmp_file = Path(msa_tempdir) / msa_file.name
             shutil.copy(msa_file, a3m_tmp_file)
 
             res = subprocess.run(

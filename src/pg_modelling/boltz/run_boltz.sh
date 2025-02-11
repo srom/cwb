@@ -14,15 +14,15 @@ seeds=({seeds})
 
 for seed in "${{seeds[@]}}"; do
     out_dir="$output/seed_$seed"
-    mkdir $out_dir
+    mkdir "$out_dir"
 
     boltz predict \
-        $input \
-        --out_dir $out_dir \
+        "$input" \
+        --out_dir "$out_dir" \
         --cache boltz_data \
         --accelerator gpu \
         --diffusion_samples 5 \
         --seed $seed \
-        >> $log_path \
-        2>>&1
+        >> "$log_path" \
+        2>&1
 done

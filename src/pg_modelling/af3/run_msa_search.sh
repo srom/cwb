@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=af3_msa_run
 #SBATCH --output={log_path}
-#SBATCH --partition=gpy
+#SBATCH --partition=gpu
 #SBATCH --qos=qos_batch
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8

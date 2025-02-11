@@ -331,11 +331,11 @@ def generate_modelling_scripts(
             script_paths.append(protenix_script_path)
 
         if model == 'boltz':
-            boltz_script_path = generate_boltz_modelling_script(model_dir, logs_foder, max_runtime_in_hours)
+            boltz_script_path = generate_boltz_modelling_script(model_dir, n_predictions, logs_foder, max_runtime_in_hours)
             script_paths.append(boltz_script_path)
         
         if model == 'chai':
-            chai_script_path = generate_chai_modelling_script(model_dir, logs_foder, max_runtime_in_hours)
+            chai_script_path = generate_chai_modelling_script(model_dir, n_predictions, logs_foder, max_runtime_in_hours)
             script_paths.append(chai_script_path)
 
     return script_paths
@@ -404,11 +404,32 @@ def generate_protenix_modelling_script(model_dir : Path, n_predictions : int, lo
     return script_path
 
 
-def generate_boltz_modelling_script(model_dir : Path, logs_foder : Path, max_runtime_in_hours : int):
-    raise NotImplementedError
+def generate_boltz_modelling_script(model_dir : Path, n_predictions : int, logs_foder : Path, max_runtime_in_hours : int):
+    current_path = Path(os.path.abspath(__file__)).parent
+    raw_script_path = current_path / 'boltz' / 'run_boltz.sh'
+
+    with raw_script_path.open('r') as f:
+        boltz_script_raw = f.read()
+
+    results_dir = model_dir / 'results'
+    results_dir.mkdir(exist_ok=True)
+
+    boltz_script = boltz_script_raw.format(
+        input=(model_dir / 'inputs').resolve().as_posix(),
+        output=results_dir.resolve().as_posix(),
+        time_budget=encode_pbspro_time_budget(max_runtime_in_hours),
+        seeds=gen_boltz_model_seeds(n_predictions),
+        log_path=(logs_foder / 'protenix_modelling.log').as_posix(),
+    )
+
+    script_path = (model_dir / 'run_boltz.sh')
+    with script_path.open('w') as f_out:
+        f_out.write(boltz_script)
+
+    return script_path
 
 
-def generate_chai_modelling_script(model_dir : Path, logs_foder : Path, max_runtime_in_hours : int):
+def generate_chai_modelling_script(model_dir : Path, n_predictions : int, logs_foder : Path, max_runtime_in_hours : int):
     raise NotImplementedError
 
 
@@ -582,7 +603,35 @@ def generate_boltz_input(
     model_dir : Path, 
     msa_folder : Path,
 ):
-    raise NotImplementedError
+    name = f'{protein.id}__{ligand_id}'
+    spec = {
+        'version': 1,
+        'sequences': [
+            {
+                'protein': {
+                    'id': ['A'],
+                    'sequence': str(protein.seq).upper(),
+                    'msa': (msa_folder / f'{protein.id}.a3m').resolve().as_posix(),
+                }
+            },
+            {
+                'ligand': {
+                    'id': ['B'],
+                    'smiles': Chem.MolToSmiles(ligand_mol),
+                }
+            }
+        ],
+    }
+
+    output_dir = model_dir / 'inputs'
+    output_dir.mkdir(exist_ok=True)
+
+    with (output_dir / f'{name}.yml').open('w') as f_out:
+        json.dump(
+            [spec], 
+            f_out,
+            indent=True,
+        )
 
 
 def generate_chai_input(
@@ -614,7 +663,7 @@ def encode_slurm_time_budget(max_runtime_in_hours : int) -> str:
     return f'{days}-{str(hours).zfill(2)}:00:00'
 
 
-def gen_protenix_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> str:
+def gen_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> List[int]:
     if n >= max_seed:
         raise ValueError(
             f'Number of models requested ({n}) is too high for the max seed set ({max_seed})'
@@ -628,8 +677,16 @@ def gen_protenix_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100
     if len(seeds) != n:
         # This should never happen
         raise ValueError(f"Couldn't generate {n} unique random seeds")
+    
+    return seeds
 
-    return ','.join([str(s) for s in seeds])
+
+def gen_protenix_model_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> str:
+    return ','.join([str(s) for s in gen_seeds(n, max_seed, n_tries)])
+
+
+def gen_boltz_model_seeds(n, max_seed : int = 1000, n_tries : int = 100) -> str:
+    return ' '.join([str(s) for s in gen_seeds(n, max_seed, n_tries)])
 
 
 def parse_args():

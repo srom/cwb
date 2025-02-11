@@ -145,13 +145,18 @@ def main():
         logger.error(f'Directory does not exist: {modelling_dir}')
         sys.exit(1)
 
-    scores = []
+    
+    protein_names = set()
     for p in modelling_dir.glob('*__*'):
         if not p.is_dir():
             continue
 
         protein_name = p.name.split('__')[0]
+        protein_names.add(protein_name)
 
+    scores = []
+    for i, protein_name in enumerate(sorted(protein_names)):
+        logger.info(f'Processing protein {protein_name} ({i+1:,} of {len(protein_names):,})')
         score_df = process_protenix_ligand_pulldown_results(
             protein_name, 
             modelling_dir, 

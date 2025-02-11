@@ -12,7 +12,7 @@ output="{output}"
 log_path="{log_path}"
 seeds=({seeds})
 
-for seed in "${seeds[@]}"; do
+for seed in "${{seeds[@]}}"; do
     out_dir="$output/seed_$seed"
     mkdir $out_dir
 

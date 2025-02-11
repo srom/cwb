@@ -397,7 +397,7 @@ def generate_protenix_modelling_script(model_dir : Path, n_predictions : int, lo
         log_path=(logs_foder / 'protenix_modelling.log').as_posix(),
     )
 
-    script_path = (model_dir / 'run_protenix.sh')
+    script_path = model_dir / 'run_protenix.sh'
     with script_path.open('w') as f_out:
         f_out.write(protenix_script)
 
@@ -419,10 +419,10 @@ def generate_boltz_modelling_script(model_dir : Path, n_predictions : int, logs_
         output=results_dir.resolve().as_posix(),
         time_budget=encode_pbspro_time_budget(max_runtime_in_hours),
         seeds=gen_boltz_model_seeds(n_predictions),
-        log_path=(logs_foder / 'protenix_modelling.log').as_posix(),
+        log_path=(logs_foder / 'boltz_modelling.log').as_posix(),
     )
 
-    script_path = (model_dir / 'run_boltz.sh')
+    script_path = model_dir / 'run_boltz.sh'
     with script_path.open('w') as f_out:
         f_out.write(boltz_script)
 
@@ -530,7 +530,7 @@ def generate_af3_input(
     try:
         ccd_data = generate_ccd_from_mol(ligand_mol, ligand_id)
     except ValueError:
-        print(f'Error for ligand: {ligand_id}')
+        logger.error(f'Error for ligand: {ligand_id}')
         raise
 
     name = f'{protein.id}__{ligand_id}'
@@ -669,6 +669,7 @@ def gen_seeds(n : int, max_seed : int = 1000, n_tries : int = 100) -> List[int]:
             f'Number of models requested ({n}) is too high for the max seed set ({max_seed})'
         )
 
+    seeds = []
     for _ in range(n_tries):
         seeds = [int(random.uniform(1, max_seed)) for _ in range(n)]
         if len(seeds) == len(set(seeds)):

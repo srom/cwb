@@ -47,6 +47,7 @@ from typing import Dict, Iterator, List, Tuple
 
 import pandas as pd
 from Bio import SeqIO
+from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 from rdkit import Chem
 
@@ -670,10 +671,15 @@ def generate_chai_input(
 ):
     name = f'{protein.id}__{ligand_id}'
     records = [
-        protein,
         SeqRecord(
-            seq=Chem.MolToSmiles(ligand_mol),
-            id=ligand_id,
+            seq=protein.seq,
+            id=f'protein|name={protein.id}',
+            name='',
+            description='',
+        ),
+        SeqRecord(
+            seq=Seq(Chem.MolToSmiles(ligand_mol)),
+            id=f'ligand|name={ligand_id}',
             name='',
             description='',
         )

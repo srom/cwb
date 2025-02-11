@@ -628,7 +628,7 @@ def generate_boltz_input(
 
     with (output_dir / f'{name}.yml').open('w') as f_out:
         json.dump(
-            [spec], 
+            spec, 
             f_out,
             indent=True,
         )

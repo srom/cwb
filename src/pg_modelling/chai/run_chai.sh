@@ -2,6 +2,8 @@
 #PBS -l walltime={time_budget}
 #PBS -l select=1:ncpus=8:mem=384gb:ngpus=1:gpu_type=A100
 
+set -e
+
 cd /gpfs/home/rs1521/
 
 . load_conda.sh

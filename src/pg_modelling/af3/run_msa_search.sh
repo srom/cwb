@@ -10,7 +10,7 @@
 #SBATCH --time={time_budget}
 
 INPUT="{input}"
-INPUT="{output}"
+OUTPUT="{output}"
 
 module load alphafold/3.0.1
 

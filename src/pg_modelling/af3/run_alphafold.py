@@ -75,6 +75,9 @@ def main():
             continue
 
         protein_spec_path = protein_spec_dir / f'{protein_spec_dir.name}_data.json'
+        if not protein_spec_path.is_file():
+            continue
+
         with protein_spec_path.open() as f:
             protein_spec = json.load(f)
 

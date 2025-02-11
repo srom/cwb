@@ -70,7 +70,7 @@ def main():
     logger.info('Running AlphaFold 3')
 
     # Generate inputs
-    for protein_spec_dir in ligand_specs_dir.iterdir():
+    for protein_spec_dir in protein_specs_dir.iterdir():
         if not protein_spec_dir.is_dir():
             continue
 

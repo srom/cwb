@@ -167,9 +167,10 @@ def main():
         logger.error(f'Directory does not exist: {modelling_dir}')
         sys.exit(1)
 
+    proteins_fasta_path = modelling_dir.parent.parent / 'proteins.fasta'
     protein_names = [
         protein_record.id 
-        for protein_record in SeqIO.parse(modelling_dir.parent.parent / 'proteins.fasta', 'fasta')
+        for protein_record in SeqIO.parse(proteins_fasta_path, 'fasta')
     ]
 
     scores = []

@@ -54,8 +54,8 @@ def process_protenix_ligand_pulldown_results(
                     f.parent / 
                     f.name.replace('.cif', '.json').replace('_sample_', '_summary_confidence_sample_')
                 )
-                seed = int(re.match(r'_seed_([0-9]+)_', structure_file.name)[1])
-                sample = int(re.match(r'_sample_([0-9]+).cif', structure_file.name)[1])
+                seed = int(re.match(r'^.+_seed_([0-9]+)_.+$', structure_file.name)[1])
+                sample = int(re.match(r'^.+_sample_([0-9]+)\.cif$', structure_file.name)[1])
                 models.append((structure_file, score_file, seed, sample))
 
             for structure_file, score_file, seed, sample in models:

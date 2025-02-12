@@ -21,7 +21,7 @@ export CPU_COUNT=$n_cpus
 module load miniconda3
 conda activate cwb
 
-cd cd /home/rs1521/cwb-main
+cd /home/rs1521/cwb-main
 
 python -m src.pg_modelling.af3.scoring \
     -i "{input}" \

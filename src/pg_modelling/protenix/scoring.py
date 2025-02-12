@@ -155,7 +155,6 @@ def main():
     if not modelling_dir.is_dir():
         logger.error(f'Directory does not exist: {modelling_dir}')
         sys.exit(1)
-
     
     protein_names = set()
     for p in modelling_dir.glob('*__*'):

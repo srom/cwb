@@ -4,7 +4,6 @@ import re
 import subprocess
 import tempfile
 
-import numpy as np
 from Bio.PDB import MMCIFParser, PDBIO, Select
 from rdkit import Chem
 from rdkit.Chem import AllChem
@@ -285,6 +284,9 @@ def extract_protein_and_ligand_from_mmcif(
 
         # Read the ligand PDB file with RDKit
         ligand_mol = Chem.MolFromPDBFile(temp_pdb.as_posix(), removeHs=False)
+
+        if ligand_mol is None:
+            raise ValueError(f'Ligand {ligand_id}: could not parse PDB with RDkit')
 
         # Write out the molecule as an SDF file
         Chem.MolToMolFile(ligand_mol, output_ligand_sdf.as_posix())

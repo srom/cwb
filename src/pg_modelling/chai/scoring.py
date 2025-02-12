@@ -75,7 +75,9 @@ def process_chai_ligand_pulldown_results(
         score, errs, energy_ratio = run_chai_posebusters(structure_file_path)
         scores.append(score)
         errors.append(errs)
-        energy_ratios.append(np.round(energy_ratio, 1))
+        energy_ratios.append(
+            np.round(energy_ratio, 1) if energy_ratio is not None else energy_ratio
+        )
 
     results_df['posebusters_score'] = scores
     results_df['energy_ratio'] = energy_ratios
@@ -93,11 +95,15 @@ def process_chai_ligand_pulldown_results(
 
 
 def run_chai_posebusters(structure_path_str : str, ligand_id='LIG2'):
-    pose_busters_res = run_pose_busters(
-        Path(structure_path_str), 
-        ligand_id=ligand_id,
-        full_report=True,
-    ).iloc[0]
+    try:
+        pose_busters_res = run_pose_busters(
+            Path(structure_path_str), 
+            ligand_id=ligand_id,
+            full_report=True,
+        ).iloc[0]
+    except ValueError as e:
+        logger.error(e)
+        return None, None, None
 
     pose_busters_score = pose_busters_res['score']
     energy_ratio = pose_busters_res['energy_ratio']

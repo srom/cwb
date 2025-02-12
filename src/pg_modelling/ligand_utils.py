@@ -4,7 +4,7 @@ import re
 import subprocess
 import tempfile
 
-from Bio.PDB import MMCIFParser, PDBIO, Select
+from Bio.PDB import MMCIFParser, PDBIO, Select, PDBParser
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import gemmi
@@ -220,7 +220,7 @@ def run_pose_busters(input_mmcif : Path, ligand_id : str, full_report : bool = F
     with tempfile.TemporaryDirectory() as tmpdir:
         protein_pdb_path = Path(tmpdir) / 'protein.pdb'
         ligand_sdf_path = Path(tmpdir) / 'ligand.sdf'
-        extract_protein_and_ligand_from_mmcif(input_mmcif, protein_pdb_path, ligand_sdf_path, ligand_id)
+        extract_protein_and_ligand_from_mmcif(input_mmcif, protein_pdb_path, ligand_sdf_path)
 
         buster = PoseBusters(config="dock")
         res_df = buster.bust(
@@ -243,53 +243,50 @@ def extract_protein_and_ligand_from_mmcif(
     input_mmcif : Path, 
     output_protein_pdb : Path,
     output_ligand_sdf : Path,
-    ligand_id : str,
 ):
     """
     Load mmCIF file and extract protein and ligand into PDB and SDF files respectively.
     This is first and foremost a helper function to prep inputs for PoseBusters.
     """
-    parser = MMCIFParser()
-    structure = parser.get_structure('structure', input_mmcif.as_posix())
-
-    # Modify the structure in memory: change the ligand’s residue name
-    for model in structure:
-        for chain in model:
-            for residue in chain:
-                if residue.get_resname() == ligand_id:
-                    residue.resname = "ZZZ"
-
-    class ProteinSelect(Select):
-        def accept_residue(self, residue):
-            # Standard (polymer) residues have a blank in the first element of residue.id.
-            return residue.id[0] == " "
-
-    class LigandSelect(Select):
-        def accept_residue(self, residue):
-            # Here we assume the ligand is a hetero residue (its id[0] is not a blank)
-            # and its residue name has been renamed to "ZZZ".
-            return residue.id[0] != " " and residue.get_resname() == "ZZZ"
-
-    # Write out the protein-only structure to a PDB file
-    io = PDBIO()
-    io.set_structure(structure)
-    io.save(output_protein_pdb.as_posix(), ProteinSelect())
-
-    # Write out the ligand-only structure to a temporary PDB file
-    # before converting it to SDF with RDKit.
     with tempfile.TemporaryDirectory() as tmpdir:
-        temp_pdb = Path(tmpdir) / 'ligand.pdb'
-        io.set_structure(structure)
-        io.save(temp_pdb.as_posix(), LigandSelect())
+        temp_pdb_complex = Path(tmpdir) / 'complex.pdb'
+        temp_pdb_ligand = Path(tmpdir) / 'ligand.pdb'
 
-        # Read the ligand PDB file with RDKit
-        ligand_mol = Chem.MolFromPDBFile(temp_pdb.as_posix(), removeHs=False)
+        res = subprocess.run([
+            'obabel', 
+            '-icif', input_mmcif.as_posix(),
+            '-opdb', '-O', temp_pdb_complex.as_posix(),
+        ])
+        if res.returncode != 0 or not temp_pdb_complex.is_file():
+            raise ValueError('Error converting complex to PDB')
 
-        if ligand_mol is None:
-            raise ValueError(f'Ligand {ligand_id}: could not parse PDB with RDkit')
+        # Load the PDB file
+        parser = PDBParser()
+        structure = parser.get_structure('complex', temp_pdb_complex.as_posix())
 
-        # Write out the molecule as an SDF file
-        Chem.MolToMolFile(ligand_mol, output_ligand_sdf.as_posix())
+        # Extract protein (chain A)
+        io = PDBIO()
+        io.set_structure(structure[0]['A'])
+        io.save(output_protein_pdb.as_posix())
+
+        if not output_protein_pdb.is_file():
+            raise ValueError('Error converting protein to PDB')
+
+        # Extract ligand (chain B)
+        io = PDBIO()
+        io.set_structure(structure[0]['B'])
+        io.save(temp_pdb_ligand.as_posix())
+
+        if not temp_pdb_ligand.is_file():
+            raise ValueError('Error converting ligand to PDB')
+
+        res = subprocess.run([
+            'obabel', 
+            '-ipdb', temp_pdb_ligand.as_posix(),
+            '-osdf', '-O', output_ligand_sdf.as_posix(),
+        ])
+        if res.returncode != 0 or not output_ligand_sdf.is_file():
+            raise ValueError('Error converting ligand to SDF')
 
 
 def gen_model_seeds(n):

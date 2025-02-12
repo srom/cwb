@@ -54,7 +54,7 @@ def process_af3_ligand_pulldown_results(
                         structure_file = directory / 'model.cif'
 
                         seed = int(re.match(r'^seed-([0-9]+)_.+$', directory.name)[1])
-                        sample = int(re.match(r'^.+_sample_([0-9]+)$', directory.name)[1])
+                        sample = int(re.match(r'^.+_sample-([0-9]+)$', directory.name)[1])
 
                         models.append((
                             structure_file,

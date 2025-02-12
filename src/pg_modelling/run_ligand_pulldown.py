@@ -499,8 +499,10 @@ def generate_scoring_script(
         script_raw = f.read()
 
     if orchestrator == 'pbspro':
+        log_path = logs_foder / f'{model}_scoring.log'
         time_budget_str = encode_pbspro_time_budget(max_runtime_in_hours)
     else:
+        log_path = logs_foder / f'{model}_scoring_%j.log'
         time_budget_str = encode_slurm_time_budget(max_runtime_in_hours)
 
     output_path = model_dir / 'scores.csv'
@@ -508,7 +510,7 @@ def generate_scoring_script(
     script = script_raw.format(
         input=(model_dir / 'results').resolve().as_posix(),
         output=output_path.resolve().as_posix(),
-        log_path=(logs_foder / f'{model}_scoring.log').resolve().as_posix(),
+        log_path=log_path.resolve().as_posix(),
         time_budget=time_budget_str,
     )
 

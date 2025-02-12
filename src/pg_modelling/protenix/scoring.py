@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
+import re
 import sys
 
 import numpy as np
@@ -18,10 +19,13 @@ def process_protenix_ligand_pulldown_results(
     results_folder : Path,
     run_posebusters : bool = False,
     score_all_sample : bool = False,
+    keep_all : bool = False,
 ) -> pd.DataFrame:
     data = {
         'protein_name': [],
         'ligand_name': [],
+        'seed': [],
+        'sample': [],
         'structure_file': [],
         'ptm': [],
         'iptm': [],
@@ -50,18 +54,22 @@ def process_protenix_ligand_pulldown_results(
                     f.parent / 
                     f.name.replace('.cif', '.json').replace('_sample_', '_summary_confidence_sample_')
                 )
-                models.append((structure_file, score_file))
+                seed = int(re.match(r'_seed_([0-9]+)_', structure_file.name)[1])
+                sample = int(re.match(r'_sample_([0-9]+).cif', structure_file.name)[1])
+                models.append((structure_file, score_file, seed, sample))
 
-            for structure_file, score_file in models:
+            for structure_file, score_file, seed, sample in models:
                 with score_file.open() as f:
                     scores = json.load(f)
-                
+
                 ptm = scores['ptm']
                 iptm = scores['iptm']
                 confidence = np.round(0.8 * iptm + 0.2 * ptm, 3)
 
                 data['protein_name'].append(protein_name)
                 data['ligand_name'].append(ligand_name)
+                data['seed'].append(seed)
+                data['sample'].append(sample)
                 data['structure_file'].append(structure_file.as_posix())
                 data['ptm'].append(ptm)
                 data['iptm'].append(iptm)
@@ -81,18 +89,21 @@ def process_protenix_ligand_pulldown_results(
             energy_ratios.append(np.round(energy_ratio, 1))
 
         protenix_results_df['posebusters_score'] = scores
-        protenix_results_df['posebusters_errors'] = errors
         protenix_results_df['energy_ratio'] = energy_ratios
+        protenix_results_df['posebusters_errors'] = errors
 
         protenix_results_df = protenix_results_df.sort_values(
             ['posebusters_score', 'confidence', 'energy_ratio'], 
             ascending=[False, False, True],
         )
 
-    return protenix_results_df.drop_duplicates([
-        'protein_name', 
-        'ligand_name'
-    ]).set_index([
+    if not keep_all:
+        protenix_results_df = protenix_results_df.drop_duplicates([
+            'protein_name', 
+            'ligand_name'
+        ])
+
+    return protenix_results_df.set_index([
         'protein_name',
         'ligand_name',
     ])
@@ -162,9 +173,11 @@ def main():
             modelling_dir, 
             run_posebusters=True, 
             score_all_sample=True,
+            keep_all=True,
         )
         scores.append(score_df)
 
+    logger.info(f'Exporting to {output_path}')
     scores_df = pd.concat(scores)
     scores_df.to_csv(output_path)
 

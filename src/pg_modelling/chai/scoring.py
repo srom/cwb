@@ -52,8 +52,8 @@ def process_chai_ligand_pulldown_results(
                 models.append((structure_file, score_file, seed, sample))
 
             for structure_file, score_file, seed, sample in models:
-                with score_file.open() as score_file:
-                    scores = dict(np.load(score_file))
+                with np.load(score_file) as data:
+                    scores = dict(data)
 
                 ptm = scores['ptm'][0]
                 iptm = scores['iptm'][0]

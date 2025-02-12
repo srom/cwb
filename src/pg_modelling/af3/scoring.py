@@ -98,7 +98,7 @@ def process_af3_ligand_pulldown_results(
         results_df['posebusters_errors'] = errors
 
         results_df = results_df.sort_values(
-            ['posebusters_score' 'confidence', 'energy_ratio',], 
+            ['posebusters_score', 'confidence', 'energy_ratio',], 
             ascending=[False, False, True],
         )
 

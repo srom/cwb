@@ -9,7 +9,11 @@ from Bio import SeqIO
 import numpy as np
 import pandas as pd
 
-from src.pg_modelling.ligand_utils import run_pose_busters, POSEBUSTERS_CHECKS
+from src.pg_modelling.ligand_utils import (
+    extract_protein_and_ligand_from_mmcif,
+    run_pose_busters_from_ligand_and_protein, 
+    POSEBUSTERS_CHECKS,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -96,8 +100,16 @@ def process_chai_ligand_pulldown_results(
 
 def run_chai_posebusters(structure_path_str : str, ligand_id='LIG2'):
     try:
-        pose_busters_res = run_pose_busters(
-            Path(structure_path_str), 
+        ligand_sdf_path = structure_path_str.parent / structure_path_str.name.replace('.cif', '_ligand.sdf')
+        protein_pdb_path = structure_path_str.parent / structure_path_str.name.replace('.cif', '_protein.pdb')
+        extract_protein_and_ligand_from_mmcif(
+            structure_path_str,
+            protein_pdb_path,
+            ligand_sdf_path,
+        )
+        pose_busters_res = run_pose_busters_from_ligand_and_protein(
+            ligand_sdf_path,
+            protein_pdb_path,
             ligand_id=ligand_id,
             full_report=True,
         ).iloc[0]

@@ -221,14 +221,27 @@ def run_pose_busters(input_mmcif : Path, ligand_id : str, full_report : bool = F
         protein_pdb_path = Path(tmpdir) / 'protein.pdb'
         ligand_sdf_path = Path(tmpdir) / 'ligand.sdf'
         extract_protein_and_ligand_from_mmcif(input_mmcif, protein_pdb_path, ligand_sdf_path)
-
-        buster = PoseBusters(config="dock")
-        res_df = buster.bust(
-            mol_pred=ligand_sdf_path, 
-            mol_cond=protein_pdb_path,
-            mol_true=None,
-            full_report=full_report,
+        return run_pose_busters_from_ligand_and_protein(
+            ligand_sdf_path,
+            protein_pdb_path,
+            ligand_id,
+            full_report,
         )
+
+
+def run_pose_busters_from_ligand_and_protein(
+    ligand_sdf_path : Path, 
+    protein_pdb_path : Path, 
+    ligand_id : str, 
+    full_report : bool = False,
+):
+    buster = PoseBusters(config='dock')
+    res_df = buster.bust(
+        mol_pred=ligand_sdf_path, 
+        mol_cond=protein_pdb_path,
+        mol_true=None,
+        full_report=full_report,
+    )
 
     boolean_columns = POSEBUSTERS_CHECKS
     res_df['ligand_id'] = ligand_id

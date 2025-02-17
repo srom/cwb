@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -l walltime={time_budget}
-#PBS -l select=1:ncpus=16:mem=32gb
+#PBS -l select=1:ncpus=16:mem=128gb:ngpus=1:gpu_type=A100
 
 set -e
 
@@ -23,4 +23,12 @@ python -m src.pg_modelling.chai.scoring \
     -i "{input}" \
     -o "{output}" \
     > "{log_path}" \
+    2>&1
+
+conda deactivate 
+conda activate aev-plig
+
+python -m src.pg_modelling.scoring.run_aev_plig_scoring \
+    -i "{output}" \
+    >> "{log_path}" \
     2>&1

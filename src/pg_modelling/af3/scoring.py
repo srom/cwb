@@ -120,12 +120,12 @@ def process_af3_ligand_pulldown_results(
     ])
 
 
-def run_af3_posebusters(ligand_name : str, structure_path_str : Path):
+def run_af3_posebusters(ligand_name : str, structure_path : Path):
     try:
-        ligand_sdf_path = structure_path_str.parent / structure_path_str.name.replace('.cif', '_ligand.sdf')
-        protein_pdb_path = structure_path_str.parent / structure_path_str.name.replace('.cif', '_protein.pdb')
+        ligand_sdf_path = structure_path.parent / structure_path.name.replace('.cif', '_ligand.sdf')
+        protein_pdb_path = structure_path.parent / structure_path.name.replace('.cif', '_protein.pdb')
         extract_protein_and_ligand_from_mmcif(
-            structure_path_str,
+            structure_path,
             protein_pdb_path,
             ligand_sdf_path,
         )

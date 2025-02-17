@@ -87,7 +87,7 @@ def process_protenix_ligand_pulldown_results(
     if run_posebusters:
         scores, errors, energy_ratios = [], [], []
         for structure_file_path in protenix_results_df['structure_file'].values:
-            score, errs, energy_ratio = run_protenix_posebusters(structure_file_path)
+            score, errs, energy_ratio = run_protenix_posebusters(Path(structure_file_path))
             scores.append(score)
             errors.append(errs)
             energy_ratios.append(

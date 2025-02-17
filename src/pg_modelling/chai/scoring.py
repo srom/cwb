@@ -76,7 +76,7 @@ def process_chai_ligand_pulldown_results(
 
     scores, errors, energy_ratios = [], [], []
     for structure_file_path in results_df['structure_file'].values:
-        score, errs, energy_ratio = run_chai_posebusters(structure_file_path)
+        score, errs, energy_ratio = run_chai_posebusters(Path(structure_file_path))
         scores.append(score)
         errors.append(errs)
         energy_ratios.append(

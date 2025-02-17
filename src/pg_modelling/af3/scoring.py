@@ -92,7 +92,7 @@ def process_af3_ligand_pulldown_results(
     if run_posebusters:
         scores, errors, energy_ratios = [], [], []
         for ligand_name, structure_file_path in results_df[['ligand_name', 'structure_file']].values:
-            score, errs, energy_ratio = run_af3_posebusters(ligand_name, structure_file_path)
+            score, errs, energy_ratio = run_af3_posebusters(ligand_name, Path(structure_file_path))
             scores.append(score)
             errors.append(errs)
             energy_ratios.append(

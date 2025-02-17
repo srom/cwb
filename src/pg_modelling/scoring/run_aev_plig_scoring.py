@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 import sys
 
+import numpy as np
 import pandas as pd
 
 
@@ -35,13 +36,13 @@ def main():
         lambda row: '__'.join([
             row['protein_name'],
             row['ligand_name'],
-            row['seed'],
-            row['sample'],
+            str(row['seed']),
+            str(row['sample']),
         ]),
         axis=1,
     )
 
-    sdf_files, pdb_files = []
+    sdf_files, pdb_files = [], []
     for _, row in scores_df.iterrows():
         cif_path = Path(row['structure_file'])
         ligand_sdf_path = cif_path.parent / cif_path.name.replace('.cif', '_ligand.sdf')
@@ -90,7 +91,7 @@ def main():
     scores_df['aev_plig_pK'] = None
     for unique_id in scores_df.index:
         if unique_id in predictions_df.index:
-            scores_df.loc[unique_id, 'aev_plig_pK'] = predictions_df.loc['unique_id', 'pK']
+            scores_df.loc[unique_id, 'aev_plig_pK'] = np.round(predictions_df.loc[unique_id, 'preds'], 2)
 
     output_csv_path.unlink()
 

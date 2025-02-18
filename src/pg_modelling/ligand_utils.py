@@ -146,11 +146,11 @@ def run_obabel_gen3d(smiles : str, output_path : Path) -> Chem.Mol:
 
 
 def generate_conformation(
-        mol : Chem.Mol, 
-        random_seed : int = 42, 
-        obabel_fallback : bool = False,
-        n_cpus : int = 1,
-    ):
+    mol : Chem.Mol, 
+    random_seed : int = 42, 
+    obabel_fallback : bool = False,
+    n_cpus : int = 1,
+):
     params = AllChem.ETKDGv3()
     params.randomSeed = random_seed
     params.numThreads = n_cpus

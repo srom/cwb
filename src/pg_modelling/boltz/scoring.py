@@ -102,12 +102,14 @@ def process_boltz_ligand_pulldown_results(
 
 def run_boltz_posebusters(structure_path : Path, ligand_id='LIG'):
     try:
+        structure_pdb_path = structure_path.parent / structure_path.name.replace('.cif', '.pdb')
         ligand_sdf_path = structure_path.parent / structure_path.name.replace('.cif', '_ligand.sdf')
         protein_pdb_path = structure_path.parent / structure_path.name.replace('.cif', '_protein.pdb')
         extract_protein_and_ligand_from_mmcif(
             structure_path,
             protein_pdb_path,
             ligand_sdf_path,
+            structure_pdb_path,
         )
         pose_busters_res = run_pose_busters_from_ligand_and_protein(
             ligand_sdf_path,

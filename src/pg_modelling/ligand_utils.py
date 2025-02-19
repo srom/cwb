@@ -4,11 +4,11 @@ import re
 import subprocess
 import tempfile
 
-from Bio.PDB import MMCIFParser, PDBIO, Select, PDBParser
-from rdkit import Chem
-from rdkit.Chem import AllChem
+from Bio.PDB import PDBIO, PDBParser
 import gemmi
 from posebusters import PoseBusters
+from rdkit import Chem
+from rdkit.Chem import AllChem
 
 
 POSEBUSTERS_CHECKS = [
@@ -256,26 +256,25 @@ def extract_protein_and_ligand_from_mmcif(
     input_mmcif : Path, 
     output_protein_pdb : Path,
     output_ligand_sdf : Path,
+    output_pdb : Path = None,
 ):
     """
     Load mmCIF file and extract protein and ligand into PDB and SDF files respectively.
     This is first and foremost a helper function to prep inputs for PoseBusters.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        temp_pdb_complex = Path(tmpdir) / 'complex.pdb'
         temp_pdb_ligand = Path(tmpdir) / 'ligand.pdb'
+        
+        if output_pdb is None:
+            pdb_complex = Path(tmpdir) / 'complex.pdb'
+        else:
+            pdb_complex = output_pdb
 
-        res = subprocess.run([
-            'obabel', 
-            '-icif', input_mmcif.as_posix(),
-            '-opdb', '-O', temp_pdb_complex.as_posix(),
-        ])
-        if res.returncode != 0 or not temp_pdb_complex.is_file():
-            raise ValueError('Error converting complex to PDB')
+        convert_mmcif_to_pdb(input_mmcif, pdb_complex)
 
         # Load the PDB file
         parser = PDBParser()
-        structure = parser.get_structure('complex', temp_pdb_complex.as_posix())
+        structure = parser.get_structure('complex', pdb_complex.as_posix())
 
         # Extract protein (chain A)
         io = PDBIO()
@@ -300,6 +299,16 @@ def extract_protein_and_ligand_from_mmcif(
         ])
         if res.returncode != 0 or not output_ligand_sdf.is_file():
             raise ValueError('Error converting ligand to SDF')
+
+
+def convert_mmcif_to_pdb(input_mmcif : Path, output_pdb : Path) -> None:
+    res = subprocess.run([
+        'obabel', 
+        '-icif', input_mmcif.as_posix(),
+        '-opdb', '-O', output_pdb.as_posix(),
+    ])
+    if res.returncode != 0 or not output_pdb.is_file():
+        raise ValueError('Error converting complex to PDB')
 
 
 def gen_model_seeds(n):

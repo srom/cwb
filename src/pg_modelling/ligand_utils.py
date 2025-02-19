@@ -1,3 +1,4 @@
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import random
 import re
@@ -5,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 
+import pandas as pd
 from Bio.PDB import PDBIO, PDBParser
 import gemmi
 from posebusters import PoseBusters
@@ -313,6 +315,37 @@ def run_plip(input_pdb : Path, output_dir : Path) -> int:
         stdout=sys.stdout, 
         stderr=sys.stderr,
     ).returncode
+
+
+def parse_plip_output(xml_file : Path) -> pd.DataFrame:
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    # Find the interactions element (under the bindingsite element)
+    interactions = root.find(".//bindingsite/interactions")
+
+    data = {
+        'interaction_type': [],
+        'residue_name': [],
+        'residue_number': [],
+    }
+    for group in interactions:
+        for interaction in group:
+            interaction_type = interaction.tag
+            resnr_elem = interaction.find("resnr")
+            restype_elem = interaction.find("restype")
+            
+            if resnr_elem is not None and restype_elem is not None:
+                resnr = int(resnr_elem.text)
+                restype = restype_elem.text
+                data['interaction_type'].append(interaction_type)
+                data['residue_name'].append(restype)
+                data['residue_number'].append(resnr)
+    
+    out_df = pd.DataFrame(data)
+    out_df['n_interactions'] = 1
+    out_df = out_df.groupby(['interaction_type', 'residue_name', 'residue_number']).sum()
+    return out_df.reset_index().set_index('interaction_type')
 
 
 def convert_mmcif_to_pdb(input_mmcif : Path, output_pdb : Path) -> None:

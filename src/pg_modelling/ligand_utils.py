@@ -2,6 +2,7 @@ from pathlib import Path
 import random
 import re
 import subprocess
+import sys
 import tempfile
 
 from Bio.PDB import PDBIO, PDBParser
@@ -264,7 +265,7 @@ def extract_protein_and_ligand_from_mmcif(
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         temp_pdb_ligand = Path(tmpdir) / 'ligand.pdb'
-        
+
         if output_pdb is None:
             pdb_complex = Path(tmpdir) / 'complex.pdb'
         else:
@@ -299,6 +300,19 @@ def extract_protein_and_ligand_from_mmcif(
         ])
         if res.returncode != 0 or not output_ligand_sdf.is_file():
             raise ValueError('Error converting ligand to SDF')
+
+
+def run_plip(input_pdb : Path, output_dir : Path) -> int:
+    return subprocess.run(
+        [
+            'plip', 
+            '-f', input_pdb.resolve().as_posix(),
+            '-o', output_dir.resolve().as_posix(),
+            '-pxty',
+        ],
+        stdout=sys.stdout, 
+        stderr=sys.stderr,
+    ).returncode
 
 
 def convert_mmcif_to_pdb(input_mmcif : Path, output_pdb : Path) -> None:

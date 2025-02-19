@@ -9,9 +9,10 @@ import numpy as np
 import pandas as pd
 
 from src.pg_modelling.ligand_utils import (
+    POSEBUSTERS_CHECKS,
     extract_protein_and_ligand_from_mmcif,
     run_pose_busters_from_ligand_and_protein, 
-    POSEBUSTERS_CHECKS,
+    run_plip,
 )
 
 
@@ -86,13 +87,24 @@ def process_protenix_ligand_pulldown_results(
 
     if run_posebusters:
         scores, errors, energy_ratios = [], [], []
-        for structure_file_path in protenix_results_df['structure_file'].values:
-            score, errs, energy_ratio = run_protenix_posebusters(Path(structure_file_path))
+        for structure_file_str in protenix_results_df['structure_file'].values:
+            structure_file_path = Path(structure_file_str)
+
+            # Run Pose Busters
+            score, errs, energy_ratio = run_protenix_posebusters(structure_file_path)
             scores.append(score)
             errors.append(errs)
             energy_ratios.append(
                 np.round(energy_ratio, 1) if energy_ratio is not None else energy_ratio
             )
+
+            # Run PLIP
+            input_pdb = structure_file_path.parent / structure_file_path.name.replace('.cif', '.pdb')
+            plip_output_dir = structure_file_path.parent / structure_file_path.name.replace('.cif', '_plip')
+            plip_output_dir.mkdir(exist_ok=True)
+            plip_returncode = run_plip(input_pdb, plip_output_dir)
+            if plip_returncode != 0:
+                logger.error(f'PLIP failed for {input_pdb}')
 
         protenix_results_df['posebusters_score'] = scores
         protenix_results_df['energy_ratio'] = energy_ratios
